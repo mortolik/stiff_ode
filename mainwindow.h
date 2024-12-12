@@ -1,5 +1,4 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QMainWindow>
 
@@ -8,7 +7,11 @@ namespace Ui {
 class MainWindow;
 }
 QT_END_NAMESPACE
-
+namespace StiffOde
+{
+class StiffOdeModel;
+class StiffOdeWidget;
+}
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -19,5 +22,6 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    StiffOde::StiffOdeModel* m_model {nullptr};
+    StiffOde::StiffOdeWidget* m_widget {nullptr};
 };
-#endif // MAINWINDOW_H
