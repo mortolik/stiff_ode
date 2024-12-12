@@ -1,6 +1,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGroupBox>
 #include <QPushButton>
 #include <QLineSeries>
 #include <QDoubleSpinBox>
@@ -21,8 +22,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
     mainLayout->setAlignment(Qt::AlignTop);
+    mainLayout->setSpacing(10);
 
-    QHBoxLayout *inputLayout = new QHBoxLayout();
+    QHBoxLayout *groupBoxesLayout = new QHBoxLayout();
+    groupBoxesLayout->setSpacing(10);
+    groupBoxesLayout->setAlignment(Qt::AlignLeft);
+
+    QGroupBox *inputGroupBox1 = new QGroupBox("Основные параметры", this);
+    QVBoxLayout *groupBoxLayout1 = new QVBoxLayout(inputGroupBox1);
+    groupBoxLayout1->setSpacing(10);
+
+    QHBoxLayout *inputLayout1 = new QHBoxLayout();
+    inputLayout1->setSpacing(10);
 
     QLabel *stepSizeLabel = new QLabel("Размер шага:", this);
     QDoubleSpinBox *stepSizeSpinBox = new QDoubleSpinBox(this);
@@ -30,36 +41,58 @@ MainWindow::MainWindow(QWidget *parent)
     stepSizeSpinBox->setDecimals(3);
     stepSizeSpinBox->setValue(0.001);
     stepSizeSpinBox->setSingleStep(0.001);
-    inputLayout->addWidget(stepSizeLabel);
-    inputLayout->addWidget(stepSizeSpinBox);
+    inputLayout1->addWidget(stepSizeLabel);
+    inputLayout1->addWidget(stepSizeSpinBox);
 
     QLabel *startTimeLabel = new QLabel("Начальное время:", this);
     QDoubleSpinBox *startTimeSpinBox = new QDoubleSpinBox(this);
     startTimeSpinBox->setRange(0, 10000);
     startTimeSpinBox->setDecimals(3);
     startTimeSpinBox->setValue(0);
-    inputLayout->addWidget(startTimeLabel);
-    inputLayout->addWidget(startTimeSpinBox);
+    inputLayout1->addWidget(startTimeLabel);
+    inputLayout1->addWidget(startTimeSpinBox);
 
     QLabel *endTimeLabel = new QLabel("Конечное время:", this);
     QDoubleSpinBox *endTimeSpinBox = new QDoubleSpinBox(this);
     endTimeSpinBox->setRange(0, 10000);
     endTimeSpinBox->setDecimals(3);
     endTimeSpinBox->setValue(1.0);
-    inputLayout->addWidget(endTimeLabel);
-    inputLayout->addWidget(endTimeSpinBox);
+    inputLayout1->addWidget(endTimeLabel);
+    inputLayout1->addWidget(endTimeSpinBox);
 
-    QLabel *endExactTimeLabel = new QLabel("Конечное время для точного решения:", this);
+    groupBoxLayout1->addLayout(inputLayout1);
+    groupBoxesLayout->addWidget(inputGroupBox1);
+
+    QGroupBox *inputGroupBox2 = new QGroupBox("Параметры точного решения", this);
+    QVBoxLayout *groupBoxLayout2 = new QVBoxLayout(inputGroupBox2);
+    groupBoxLayout2->setSpacing(10);
+
+    QHBoxLayout *inputLayout2 = new QHBoxLayout();
+    inputLayout2->setSpacing(10);
+
+    QLabel *startExactTimeLabel = new QLabel("Начальное время:", this);
+    QDoubleSpinBox *startExactTimeSpinBox = new QDoubleSpinBox(this);
+    startExactTimeSpinBox->setRange(0, 10000);
+    startExactTimeSpinBox->setDecimals(3);
+    startExactTimeSpinBox->setValue(0);
+    inputLayout2->addWidget(startExactTimeLabel);
+    inputLayout2->addWidget(startExactTimeSpinBox);
+    QLabel *endExactTimeLabel = new QLabel("Конечное время:", this);
     QDoubleSpinBox *endExactTimeSpinBox = new QDoubleSpinBox(this);
     endExactTimeSpinBox->setRange(0, 10000);
     endExactTimeSpinBox->setDecimals(2);
     endExactTimeSpinBox->setValue(1000.0);
-    inputLayout->addWidget(endExactTimeLabel);
-    inputLayout->addWidget(endExactTimeSpinBox);
+    inputLayout2->addWidget(endExactTimeLabel);
+    inputLayout2->addWidget(endExactTimeSpinBox);
 
-    mainLayout->addLayout(inputLayout);
+    groupBoxLayout2->addLayout(inputLayout2);
+    groupBoxesLayout->addWidget(inputGroupBox2);
+
+    mainLayout->addLayout(groupBoxesLayout);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
+    buttonLayout->setSpacing(10);
+    buttonLayout->setAlignment(Qt::AlignLeft);
 
     QPushButton *createModelButton = new QPushButton("Создать", this);
     buttonLayout->addWidget(createModelButton);
@@ -77,19 +110,18 @@ MainWindow::MainWindow(QWidget *parent)
         double startTime = startTimeSpinBox->value();
         double endTime = endTimeSpinBox->value();
         double endExactTime = endExactTimeSpinBox->value();
+        double startExactTime = startExactTimeSpinBox->value();
 
         m_model= new StiffOde::StiffOdeModel(this);
         m_model->setInitialConditions({7, 13}, startTime);
-        m_model->setParameters(stepSize, endTime, endExactTime);
+        m_model->setParameters(stepSize, endTime, endExactTime, startExactTime);
         m_model->solve();
 
         m_widget = new StiffOde::StiffOdeWidget(m_model, this);
 
         centralWidget->layout()->addWidget(m_widget);
     });
-
 }
-
 
 MainWindow::~MainWindow()
 {

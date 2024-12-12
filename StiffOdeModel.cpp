@@ -33,11 +33,12 @@ void StiffOdeModel::setInitialConditions(const std::vector<double>& initialCondi
     m_startTime = startTime;
 }
 
-void StiffOdeModel::setParameters(double stepSize, double endTime, double endExactTime)
+void StiffOdeModel::setParameters(double stepSize, double endTime, double endExactTime, double startExactTime)
 {
     m_stepSize = stepSize;
     m_endTime = endTime;
     m_endExactTime = endExactTime;
+    m_startExactTime = startExactTime;
 }
 
 std::vector<QPointF> StiffOdeModel::computeExactSolution() const
@@ -55,7 +56,7 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
     Eigen::Vector2d coefficients = eigenVectors.inverse() * initialConditions;
 
     std::vector<QPointF> exactSolution;
-    double t = m_startTime;
+    double t = m_startExactTime;
     while (t <= m_endExactTime)
     {
         Eigen::Vector2d solution = coefficients[0] * exp(eigenValues[0] * t) * eigenVectors.col(0) +
