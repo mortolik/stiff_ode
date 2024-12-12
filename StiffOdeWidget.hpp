@@ -22,10 +22,12 @@ public:
 private:
     void setupUi();
     void populateTableAndChart();
+    void populateExactChart();
 
     StiffOdeModel* m_model;
     QTableWidget* m_tableWidget;
     QChartView* m_chartView;
     QChart* m_chart;
+    QChart* m_exactChart;
 };
 }

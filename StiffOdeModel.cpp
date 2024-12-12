@@ -5,6 +5,7 @@
 #include <vector>
 #include <QDebug>
 #include <functional>
+#include <Eigen/Dense>
 
 namespace StiffOde
 {
@@ -32,11 +33,46 @@ void StiffOdeModel::setInitialConditions(const std::vector<double>& initialCondi
     m_startTime = startTime;
 }
 
-void StiffOdeModel::setParameters(double stepSize, double endTime)
+void StiffOdeModel::setParameters(double stepSize, double endTime, double endExactTime)
 {
     m_stepSize = stepSize;
     m_endTime = endTime;
+    m_endExactTime = endExactTime;
 }
+
+std::vector<QPointF> StiffOdeModel::computeExactSolution() const
+{
+
+    Eigen::Matrix2d A;
+    A << -500.005, 499.995,
+        499.995, -500.005;
+
+    Eigen::EigenSolver<Eigen::Matrix2d> solver(A);
+    Eigen::Vector2d eigenValues = solver.eigenvalues().real();
+    Eigen::Matrix2d eigenVectors = solver.eigenvectors().real();
+
+    Eigen::Vector2d initialConditions(m_initialConditions[0], m_initialConditions[1]);
+    Eigen::Vector2d coefficients = eigenVectors.inverse() * initialConditions;
+
+    std::vector<QPointF> exactSolution;
+    double t = m_startTime;
+    while (t <= m_endExactTime)
+    {
+        Eigen::Vector2d solution = coefficients[0] * exp(eigenValues[0] * t) * eigenVectors.col(0) +
+                                   coefficients[1] * exp(eigenValues[1] * t) * eigenVectors.col(1);
+
+        exactSolution.emplace_back(t, solution[0]);
+        exactSolution.emplace_back(t, solution[1]);
+        t += m_stepSize;
+    }
+    return exactSolution;
+}
+
+double StiffOdeModel::getExactEndTime()
+{
+    return m_endExactTime;
+}
+
 void StiffOdeModel::solve()
 {
     if (!m_system || m_initialConditions.empty())

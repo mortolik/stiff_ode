@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QHBoxLayout *inputLayout = new QHBoxLayout();
 
-    QLabel *stepSizeLabel = new QLabel("Step size (h):", this);
+    QLabel *stepSizeLabel = new QLabel("Размер шага:", this);
     QDoubleSpinBox *stepSizeSpinBox = new QDoubleSpinBox(this);
     stepSizeSpinBox->setRange(0.001, 1.0);
     stepSizeSpinBox->setDecimals(3);
@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     inputLayout->addWidget(stepSizeLabel);
     inputLayout->addWidget(stepSizeSpinBox);
 
-    QLabel *startTimeLabel = new QLabel("Start time (t0):", this);
+    QLabel *startTimeLabel = new QLabel("Начальное время:", this);
     QDoubleSpinBox *startTimeSpinBox = new QDoubleSpinBox(this);
     startTimeSpinBox->setRange(0, 10000);
     startTimeSpinBox->setDecimals(3);
@@ -41,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     inputLayout->addWidget(startTimeLabel);
     inputLayout->addWidget(startTimeSpinBox);
 
-    QLabel *endTimeLabel = new QLabel("End time (tN):", this);
+    QLabel *endTimeLabel = new QLabel("Конечное время:", this);
     QDoubleSpinBox *endTimeSpinBox = new QDoubleSpinBox(this);
     endTimeSpinBox->setRange(0, 10000);
     endTimeSpinBox->setDecimals(3);
@@ -49,11 +49,19 @@ MainWindow::MainWindow(QWidget *parent)
     inputLayout->addWidget(endTimeLabel);
     inputLayout->addWidget(endTimeSpinBox);
 
+    QLabel *endExactTimeLabel = new QLabel("Конечное время для точного решения:", this);
+    QDoubleSpinBox *endExactTimeSpinBox = new QDoubleSpinBox(this);
+    endExactTimeSpinBox->setRange(0, 10000);
+    endExactTimeSpinBox->setDecimals(2);
+    endExactTimeSpinBox->setValue(1000.0);
+    inputLayout->addWidget(endExactTimeLabel);
+    inputLayout->addWidget(endExactTimeSpinBox);
+
     mainLayout->addLayout(inputLayout);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
 
-    QPushButton *createModelButton = new QPushButton("Create Model", this);
+    QPushButton *createModelButton = new QPushButton("Создать", this);
     buttonLayout->addWidget(createModelButton);
 
     mainLayout->addLayout(buttonLayout);
@@ -68,10 +76,11 @@ MainWindow::MainWindow(QWidget *parent)
         double stepSize = stepSizeSpinBox->value();
         double startTime = startTimeSpinBox->value();
         double endTime = endTimeSpinBox->value();
+        double endExactTime = endExactTimeSpinBox->value();
 
         m_model= new StiffOde::StiffOdeModel(this);
         m_model->setInitialConditions({7, 13}, startTime);
-        m_model->setParameters(stepSize, endTime);
+        m_model->setParameters(stepSize, endTime, endExactTime);
         m_model->solve();
 
         m_widget = new StiffOde::StiffOdeWidget(m_model, this);
