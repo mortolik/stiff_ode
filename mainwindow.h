@@ -1,6 +1,9 @@
 #pragma once
 
+#include "qspinbox.h"
 #include <QMainWindow>
+
+QT_FORWARD_DECLARE_CLASS(QHBoxLayout);
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -24,4 +27,12 @@ private:
     Ui::MainWindow *ui;
     StiffOde::StiffOdeModel* m_model {nullptr};
     StiffOde::StiffOdeWidget* m_widget {nullptr};
+
+    QDoubleSpinBox * m_stepSizeSpinBox {nullptr};
+    QDoubleSpinBox * m_startTimeSpinBox {nullptr};
+    QDoubleSpinBox * m_endTimeSpinBox {nullptr};
+    QDoubleSpinBox * m_endExactTimeSpinBox {nullptr};
+    QDoubleSpinBox * m_startExactTimeSpinBox {nullptr};
+
+    QHBoxLayout* createGroupbox();
 };
