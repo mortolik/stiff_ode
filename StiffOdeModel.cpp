@@ -1,7 +1,9 @@
 #include "StiffOdeModel.hpp"
 #include <QObject>
 #include <QtCharts/QLineSeries>
+#include <cmath>
 #include <vector>
+#include <QDebug>
 #include <functional>
 
 namespace StiffOde
@@ -35,7 +37,6 @@ void StiffOdeModel::setParameters(double stepSize, double endTime)
     m_stepSize = stepSize;
     m_endTime = endTime;
 }
-
 void StiffOdeModel::solve()
 {
     if (!m_system || m_initialConditions.empty())
@@ -67,12 +68,25 @@ void StiffOdeModel::solve()
         std::vector<double> yNext = y;
         double tNext = t + m_stepSize;
 
-        for (int iteration = 0; iteration < 10; ++iteration)
+        for (int iteration = 0; iteration < 100; ++iteration)
         {
-            std::vector<double> fValue = m_system(yNext, tNext);
+            std::vector<double> fValue = m_system(y, t);
+            std::vector<double> yTemp = yNext;
             for (size_t i = 0; i < numEquations; ++i)
             {
                 yNext[i] = y[i] + m_stepSize * fValue[i];
+            }
+
+            double maxDiff = 0.0;
+            for (size_t i = 0; i < numEquations; ++i)
+            {
+                maxDiff = std::max(maxDiff, std::abs(yNext[i] - yTemp[i]));
+            }
+            if (maxDiff < 1e-6)
+                break;
+            if (iteration == 99)
+            {
+                qDebug() << "Warning: Method did not converge at t = " << tNext;
             }
         }
 
@@ -80,6 +94,7 @@ void StiffOdeModel::solve()
         t = tNext;
     }
 }
+
 
 const std::vector<QLineSeries*>& StiffOdeModel::getSeries() const
 {
