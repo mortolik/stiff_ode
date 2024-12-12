@@ -6,6 +6,7 @@
 #include <QTableWidget>
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
+#include <QtCharts/QValueAxis>
 #include <QtCharts/QLineSeries>
 
 namespace StiffOde
@@ -22,23 +23,19 @@ void StiffOdeWidget::setupUi()
 {
     QVBoxLayout* layout = new QVBoxLayout(this);
 
-    // Создаем табы
     QTabWidget* tabWidget = new QTabWidget(this);
 
-    // Настраиваем график
     m_chartView->setChart(m_chart);
     QWidget* chartTab = new QWidget(this);
     QVBoxLayout* chartLayout = new QVBoxLayout(chartTab);
     chartLayout->addWidget(m_chartView);
     chartTab->setLayout(chartLayout);
 
-    // Настраиваем таблицу
     QWidget* tableTab = new QWidget(this);
     QVBoxLayout* tableLayout = new QVBoxLayout(tableTab);
     tableLayout->addWidget(m_tableWidget);
     tableTab->setLayout(tableLayout);
 
-    // Добавляем вкладки
     tabWidget->addTab(chartTab, "График");
     tabWidget->addTab(tableTab, "Таблица");
 
@@ -54,7 +51,6 @@ void StiffOdeWidget::populateTableAndChart()
     int numPoints = seriesList[0]->count();
     int numVariables = static_cast<int>(seriesList.size());
 
-    // Заполняем таблицу
     m_tableWidget->setRowCount(numPoints);
     m_tableWidget->setColumnCount(numVariables + 1); // Время + переменные
 
@@ -76,8 +72,7 @@ void StiffOdeWidget::populateTableAndChart()
         }
     }
 
-    // Добавляем серии в график
-    m_chart->removeAllSeries(); // Удаляем старые серии, чтобы избежать дублирования
+    m_chart->removeAllSeries();
     for (int j = 0; j < numVariables; ++j) {
         auto series = new QtCharts::QLineSeries();
         series->setName(QString("u(%1)").arg(j + 1));
@@ -91,8 +86,17 @@ void StiffOdeWidget::populateTableAndChart()
         m_chart->addSeries(series);
     }
 
-    // Настраиваем график
     m_chart->createDefaultAxes();
+    m_chart->createDefaultAxes();
+    auto* axisY = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Vertical).first());
+    if (axisY) {
+        axisY->setLabelFormat("%.6g");
+    }
+
+    auto* axisX = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Horizontal).first());
+    if (axisX) {
+        axisX->setLabelFormat("%.6g");
+    }
     m_chart->setTitle("Solution of the Stiff ODE System");
 }
 
