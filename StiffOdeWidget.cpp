@@ -89,7 +89,7 @@ void StiffOdeWidget::populateTableAndChart()
     m_chart->removeAllSeries();
     for (int j = 0; j < numVariables; ++j) {
         auto series = new QtCharts::QLineSeries();
-        series->setName(QString("u(%1)").arg(j + 1));
+        series->setName(QString("v(%1)").arg(j + 1));
 
         for (int i = 0; i < numPoints; ++i) {
             double xValue = seriesList[0]->at(i).x();

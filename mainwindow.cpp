@@ -18,6 +18,10 @@ MainWindow::MainWindow(QWidget *parent)
     setMinimumSize(800, 600);
 
     QWidget *centralWidget = new QWidget(this);
+    QPalette pal = centralWidget->palette();
+    pal.setColor(QPalette::Background, Qt::white);
+    centralWidget->setAutoFillBackground(true);
+    centralWidget->setPalette(pal);
     setCentralWidget(centralWidget);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
@@ -84,6 +88,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_stepSizeSpinBox->setDecimals(3);
     m_stepSizeSpinBox->setValue(0.001);
     m_stepSizeSpinBox->setSingleStep(0.001);
+
     inputLayout1->addWidget(stepSizeLabel);
     inputLayout1->addWidget(m_stepSizeSpinBox);
 
@@ -124,7 +129,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_endExactTimeSpinBox = new QDoubleSpinBox(this);
     m_endExactTimeSpinBox->setRange(0, 10000);
     m_endExactTimeSpinBox->setDecimals(2);
-    m_endExactTimeSpinBox->setValue(1000.0);
+    m_endExactTimeSpinBox->setValue(100.0);
     inputLayout2->addWidget(endExactTimeLabel);
     inputLayout2->addWidget(m_endExactTimeSpinBox);
 
