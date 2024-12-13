@@ -25,9 +25,11 @@ private:
     void populateExactChart();
     void populateGlobalErrorChart();
     void populateSolutionComparisonChart();
+    void populateExactValuesTable();
 
     StiffOdeModel* m_model;
     QTableWidget* m_tableWidget;
+    QWidget* m_exactValuesTab;
     QChartView* m_chartView;
     QChart* m_chart;
     QChart* m_exactChart;
