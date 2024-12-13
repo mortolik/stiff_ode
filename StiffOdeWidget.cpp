@@ -77,39 +77,74 @@ void StiffOdeWidget::setupUi()
 void StiffOdeWidget::populateTableAndChart()
 {
     const auto& seriesList = m_model->getSeries();
-    if (seriesList.empty())
+    const auto exactSolution = m_model->computeExactSolution();
+    const auto globalErrors = m_model->computeGlobalError();
+
+    if (seriesList.empty() || exactSolution.empty() || globalErrors.empty())
         return;
 
     int numPoints = seriesList[0]->count();
     int numVariables = static_cast<int>(seriesList.size());
 
     m_tableWidget->setRowCount(numPoints);
-    m_tableWidget->setColumnCount(numVariables + 1);
+    m_tableWidget->setColumnCount(1 + numVariables * 3);
+
+    for (int col = 0; col < m_tableWidget->columnCount(); ++col)
+    {
+        m_tableWidget->setColumnWidth(col, 25 * QFontMetrics(m_tableWidget->font()).horizontalAdvance('0'));
+    }
 
     QStringList headers;
     headers << "Время";
-    for (int i = 0; i < numVariables; ++i) {
-        headers << QString("u(%1)").arg(i + 1);
+    for (int i = 0; i < numVariables; ++i)
+    {
+        headers << QString("u(%1) (точное)").arg(i + 1);
+    }
+    for (int i = 0; i < numVariables; ++i)
+    {
+        headers << QString("u(%1) (численное)").arg(i + 1);
+    }
+    for (int i = 0; i < numVariables; ++i)
+    {
+        headers << QString("E(%1) (погрешность)").arg(i + 1);
     }
     m_tableWidget->setHorizontalHeaderLabels(headers);
 
-    for (int i = 0; i < numPoints; ++i) {
-        QTableWidgetItem* timeItem = new QTableWidgetItem(QString::number(seriesList[0]->at(i).x(), 'f', 6));
+    for (int i = 0; i < numPoints; ++i)
+    {
+        QTableWidgetItem* timeItem = new QTableWidgetItem(QString::number(seriesList[0]->at(i).x(), 'g', 16));
         m_tableWidget->setItem(i, 0, timeItem);
 
-        for (int j = 0; j < numVariables; ++j) {
-            double yValue = seriesList[j]->at(i).y();
-            QTableWidgetItem* valueItem = new QTableWidgetItem(QString::number(yValue, 'f', 6));
-            m_tableWidget->setItem(i, j + 1, valueItem);
+        for (int j = 0; j < numVariables; ++j)
+        {
+            double exactValue = exactSolution[i * numVariables + j].y();
+            QTableWidgetItem* exactItem = new QTableWidgetItem(QString::number(exactValue, 'g', 16));
+            m_tableWidget->setItem(i, 1 + j, exactItem);
+        }
+
+        for (int j = 0; j < numVariables; ++j)
+        {
+            double numericalValue = seriesList[j]->at(i).y();
+            QTableWidgetItem* numericalItem = new QTableWidgetItem(QString::number(numericalValue, 'g', 16));
+            m_tableWidget->setItem(i, 1 + numVariables + j, numericalItem);
+        }
+
+        for (int j = 0; j < numVariables; ++j)
+        {
+            double errorValue = globalErrors[j][i].y();
+            QTableWidgetItem* errorItem = new QTableWidgetItem(QString::number(errorValue, 'g', 16));
+            m_tableWidget->setItem(i, 1 + 2 * numVariables + j, errorItem);
         }
     }
 
     m_chart->removeAllSeries();
-    for (int j = 0; j < numVariables; ++j) {
+    for (int j = 0; j < numVariables; ++j)
+    {
         auto series = new QtCharts::QLineSeries();
-        series->setName(QString("v(%1)").arg(j + 1));
+        series->setName(QString("u(%1)").arg(j + 1));
 
-        for (int i = 0; i < numPoints; ++i) {
+        for (int i = 0; i < numPoints; ++i)
+        {
             double xValue = seriesList[0]->at(i).x();
             double yValue = seriesList[j]->at(i).y();
             series->append(xValue, yValue);
@@ -120,12 +155,14 @@ void StiffOdeWidget::populateTableAndChart()
 
     m_chart->createDefaultAxes();
     auto* axisY = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Vertical).first());
-    if (axisY) {
+    if (axisY)
+    {
         axisY->setLabelFormat("%.6g");
     }
 
     auto* axisX = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Horizontal).first());
-    if (axisX) {
+    if (axisX)
+    {
         axisX->setLabelFormat("%.6g");
     }
     m_chart->setTitle("Решение жёсткой системы ОДУ");
