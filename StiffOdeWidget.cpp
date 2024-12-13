@@ -26,6 +26,7 @@ StiffOdeWidget::StiffOdeWidget(StiffOdeModel* model, QWidget* parent)
     populateTableAndChart();
     populateExactChart();
     populateGlobalErrorChart();
+    populateSolutionComparisonChart();
 }
 
 void StiffOdeWidget::setupUi()
@@ -233,4 +234,89 @@ void StiffOdeWidget::populateGlobalErrorChart()
 
     m_globalErrorChart->setTitle("График глобальной погрешности");
 }
+
+void StiffOdeWidget::populateSolutionComparisonChart()
+{
+    const auto& numericalSeries = m_model->getSeries();
+    const auto exactSolution = m_model->computeExactSolution();
+
+    if (numericalSeries.empty() || exactSolution.empty())
+        return;
+
+    auto* numericalY0 = new QtCharts::QLineSeries();
+    auto* numericalY1 = new QtCharts::QLineSeries();
+    auto* exactY0 = new QtCharts::QLineSeries();
+    auto* exactY1 = new QtCharts::QLineSeries();
+
+    numericalY0->setName("Численное решение v(1)");
+    numericalY1->setName("Численное решение v(2)");
+    exactY0->setName("Точное решение u(1)");
+    exactY1->setName("Точное решение u(2)");
+
+    int numPoints = numericalSeries[0]->count();
+    for (int i = 0; i < numPoints; ++i)
+    {
+        double t = numericalSeries[0]->at(i).x();
+        numericalY0->append(t, numericalSeries[0]->at(i).y());
+        numericalY1->append(t, numericalSeries[1]->at(i).y());
+    }
+
+    for (size_t i = 0; i < exactSolution.size(); i += 2)
+    {
+        exactY0->append(exactSolution[i].x(), exactSolution[i].y());
+        exactY1->append(exactSolution[i + 1].x(), exactSolution[i + 1].y());
+    }
+
+    QChart* chartY0 = new QChart();
+    chartY0->addSeries(numericalY0);
+    chartY0->addSeries(exactY0);
+    chartY0->createDefaultAxes();
+    chartY0->setTitle("Решение первой компоненты");
+    QPen penExact(Qt::blue);
+    penExact.setWidth(2);
+    exactY0->setPen(penExact);
+    QPen penNumerical(Qt::red);
+    penNumerical.setWidth(2);
+    numericalY0->setPen(penNumerical);
+
+    QChart* chartY1 = new QChart();
+    chartY1->addSeries(numericalY1);
+    chartY1->addSeries(exactY1);
+    chartY1->createDefaultAxes();
+    chartY1->setTitle("Решение второй компоненты");
+    exactY1->setPen(penExact);
+    numericalY1->setPen(penNumerical);
+
+    QVBoxLayout* layout = new QVBoxLayout();
+    QChartView* chartViewY0 = new QChartView(chartY0);
+    QChartView* chartViewY1 = new QChartView(chartY1);
+
+    layout->addWidget(chartViewY0);
+    layout->addWidget(chartViewY1);
+
+    QWidget* comparisonTab = new QWidget();
+    comparisonTab->setLayout(layout);
+    m_chart->createDefaultAxes();
+
+    auto* axisY = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Vertical).first());
+    if (axisY)
+    {
+        axisY->setLabelFormat("%.6g");
+    }
+
+    auto* axisX = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Horizontal).first());
+    if (axisX)
+    {
+        axisX->setLabelFormat("%.6g");
+    }
+
+    m_chart->setTitle("Решение жёсткой системы ОДУ");
+
+    QTabWidget* tabWidget = findChild<QTabWidget*>();
+    if (tabWidget)
+    {
+        tabWidget->addTab(comparisonTab, "Сравнение решений");
+    }
+}
+
 }

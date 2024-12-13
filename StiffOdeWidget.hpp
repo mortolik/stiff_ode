@@ -24,6 +24,7 @@ private:
     void populateTableAndChart();
     void populateExactChart();
     void populateGlobalErrorChart();
+    void populateSolutionComparisonChart();
 
     StiffOdeModel* m_model;
     QTableWidget* m_tableWidget;
