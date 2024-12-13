@@ -96,7 +96,7 @@ void StiffOdeWidget::populateTableAndChart()
     int numVariables = static_cast<int>(seriesList.size());
 
     m_tableWidget->setRowCount(numPoints);
-    m_tableWidget->setColumnCount(1 + numVariables * 3);
+    m_tableWidget->setColumnCount(2 + numVariables * 3);
 
     for (int col = 0; col < m_tableWidget->columnCount(); ++col)
     {
@@ -104,7 +104,7 @@ void StiffOdeWidget::populateTableAndChart()
     }
 
     QStringList headers;
-    headers << "Время";
+    headers << "n" << "x_n";
     for (int i = 0; i < numVariables; ++i)
     {
         headers << QString("u(%1) (точное)").arg(i + 1);
@@ -115,34 +115,37 @@ void StiffOdeWidget::populateTableAndChart()
     }
     for (int i = 0; i < numVariables; ++i)
     {
-        headers << QString("E(%1) (погрешность)").arg(i + 1);
+        headers << QString("E (погрешность)").arg(i + 1);
     }
     m_tableWidget->setHorizontalHeaderLabels(headers);
+    m_tableWidget->verticalHeader()->setVisible(false);
 
     for (int i = 0; i < numPoints; ++i)
     {
+        QTableWidgetItem* rowIndexItem = new QTableWidgetItem(QString::number(i));
+        m_tableWidget->setItem(i, 0, rowIndexItem);
         QTableWidgetItem* timeItem = new QTableWidgetItem(QString::number(seriesList[0]->at(i).x(), 'g', 16));
-        m_tableWidget->setItem(i, 0, timeItem);
+        m_tableWidget->setItem(i, 1, timeItem);
 
         for (int j = 0; j < numVariables; ++j)
         {
             double exactValue = exactSolution[i * numVariables + j].y();
             QTableWidgetItem* exactItem = new QTableWidgetItem(QString::number(exactValue, 'g', 16));
-            m_tableWidget->setItem(i, 1 + j, exactItem);
+            m_tableWidget->setItem(i, 2 + j, exactItem);
         }
 
         for (int j = 0; j < numVariables; ++j)
         {
             double numericalValue = seriesList[j]->at(i).y();
             QTableWidgetItem* numericalItem = new QTableWidgetItem(QString::number(numericalValue, 'g', 16));
-            m_tableWidget->setItem(i, 1 + numVariables + j, numericalItem);
+            m_tableWidget->setItem(i, 2 + numVariables + j, numericalItem);
         }
 
         for (int j = 0; j < numVariables; ++j)
         {
             double errorValue = globalErrors[j][i].y();
             QTableWidgetItem* errorItem = new QTableWidgetItem(QString::number(errorValue, 'g', 16));
-            m_tableWidget->setItem(i, 1 + 2 * numVariables + j, errorItem);
+            m_tableWidget->setItem(i, 2 + 2 * numVariables + j, errorItem);
         }
     }
 
@@ -325,7 +328,7 @@ void StiffOdeWidget::populateSolutionComparisonChart()
 
     auto* axisX0 = new QtCharts::QValueAxis();
     axisX0->setLabelFormat("%.6g");
-    axisX0->setTitleText("Время");
+    axisX0->setTitleText("x_n");
     chartY0->addAxis(axisX0, Qt::AlignBottom);
     numericalY0->attachAxis(axisX0);
     exactY0->attachAxis(axisX0);
@@ -345,7 +348,7 @@ void StiffOdeWidget::populateSolutionComparisonChart()
 
     auto* axisX1 = new QtCharts::QValueAxis();
     axisX1->setLabelFormat("%.6g");
-    axisX1->setTitleText("Время");
+    axisX1->setTitleText("x_n");
     chartY1->addAxis(axisX1, Qt::AlignBottom);
     numericalY1->attachAxis(axisX1);
     exactY1->attachAxis(axisX1);
@@ -384,11 +387,12 @@ void StiffOdeWidget::populateExactValuesTable()
 
     QTableWidget* exactValuesTable = new QTableWidget(this);
     exactValuesTable->setRowCount(exactSolution.size() / 2);
-    exactValuesTable->setColumnCount(4);
+    exactValuesTable->setColumnCount(5);
 
     QStringList headers;
-    headers << "Время" << "exp(-0.01 * x)" << "exp(-1000 * x)" << "u(1) (точное)" << "u(2) (точное)";
+    headers << "n" << "x_n" << "exp(-0.01 * x)" << "exp(-1000 * x)" << "u(1) (точное)" << "u(2) (точное)";
     exactValuesTable->setHorizontalHeaderLabels(headers);
+    exactValuesTable->verticalHeader()->setVisible(false);
 
     for (size_t i = 0; i < exactSolution.size() / 2; ++i)
     {
@@ -396,24 +400,27 @@ void StiffOdeWidget::populateExactValuesTable()
         double u1 = exactSolution[i * 2].y();
         double u2 = exactSolution[i * 2 + 1].y();
 
+        QTableWidgetItem* rowIndexItem = new QTableWidgetItem(QString::number(i));
+        exactValuesTable->setItem(i, 0, rowIndexItem);
+
         QTableWidgetItem* timeItem = new QTableWidgetItem(QString::number(t, 'f', 16));
-        exactValuesTable->setItem(i, 0, timeItem);
+        exactValuesTable->setItem(i, 1, timeItem);
 
         QTableWidgetItem* expSmallItem = new QTableWidgetItem(QString::number(exp(-0.01 * t), 'f', 16));
-        exactValuesTable->setItem(i, 1, expSmallItem);
+        exactValuesTable->setItem(i, 2, expSmallItem);
 
         QTableWidgetItem* expLargeItem = new QTableWidgetItem(QString::number(exp(-1000 * t), 'e', 16));
-        exactValuesTable->setItem(i, 2, expLargeItem);
+        exactValuesTable->setItem(i, 3, expLargeItem);
 
         QTableWidgetItem* exactU1Item = new QTableWidgetItem(QString::number(u1, 'f', 16));
-        exactValuesTable->setItem(i, 3, exactU1Item);
+        exactValuesTable->setItem(i, 4, exactU1Item);
 
         QTableWidgetItem* exactU2Item = new QTableWidgetItem(QString::number(u2, 'f', 16));
-        exactValuesTable->setItem(i, 4, exactU2Item);
+        exactValuesTable->setItem(i, 5, exactU2Item);
     }
 
-    exactValuesTable->horizontalHeader()->setMinimumSectionSize(20 * QFontMetrics(exactValuesTable->font()).horizontalAdvance('0'));
-    exactValuesTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    exactValuesTable->horizontalHeader()->setMinimumSectionSize(25 * QFontMetrics(exactValuesTable->font()).horizontalAdvance('0'));
+
 
     QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(m_exactValuesTab->layout());
     if (layout)
