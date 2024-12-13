@@ -19,6 +19,7 @@ public:
     void solve();
     const std::vector<QLineSeries*>& getSeries() const;
     std::vector<QPointF> computeExactSolution() const;
+    std::vector<std::vector<QPointF>>computeGlobalError() const;
     double getExactEndTime();
 
 private:

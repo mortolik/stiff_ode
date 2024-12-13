@@ -1,8 +1,9 @@
 #include "StiffOdeModel.hpp"
 #include "StiffOdeWidget.hpp"
 
-#include <QVBoxLayout>
+#include <QDebug>
 #include <QTabWidget>
+#include <QVBoxLayout>
 #include <QTableWidget>
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
@@ -17,12 +18,14 @@ StiffOdeWidget::StiffOdeWidget(StiffOdeModel* model, QWidget* parent)
     m_tableWidget(new QTableWidget(this)),
     m_chartView(new QChartView(this)),
     m_chart(new QChart),
-    m_exactChart(new QChart)
+    m_exactChart(new QChart),
+    m_globalErrorChart(new QChart)
 {
     setupUi();
 
     populateTableAndChart();
     populateExactChart();
+    populateGlobalErrorChart();
 }
 
 void StiffOdeWidget::setupUi()
@@ -49,9 +52,17 @@ void StiffOdeWidget::setupUi()
     exactChartLayout->addWidget(exactChartView);
     exactChartTab->setLayout(exactChartLayout);
 
+    QChartView* globalErrorChartView = new QChartView(this);
+    globalErrorChartView->setChart(m_globalErrorChart);
+    QWidget* errorChartTab = new QWidget(this);
+    QVBoxLayout* errorChartLayout = new QVBoxLayout(errorChartTab);
+    errorChartLayout->addWidget(globalErrorChartView);
+    errorChartTab->setLayout(errorChartLayout);
+
     tabWidget->addTab(chartTab, "График численного решения");
     tabWidget->addTab(tableTab, "Таблица");
     tabWidget->addTab(exactChartTab, "График точного решения");
+    tabWidget->addTab(errorChartTab, "График глобальной погрешности");
 
     layout->addWidget(tabWidget);
     setLayout(layout);
@@ -115,7 +126,6 @@ void StiffOdeWidget::populateTableAndChart()
 
 void StiffOdeWidget::populateExactChart()
 {
-
     const auto exactSolution = m_model->computeExactSolution();
     if (exactSolution.empty())
         return;
@@ -173,4 +183,54 @@ void StiffOdeWidget::populateExactChart()
     seriesY1->setPen(penY1);
 }
 
+void StiffOdeWidget::populateGlobalErrorChart()
+{
+    const auto globalErrors = m_model->computeGlobalError();
+    if (globalErrors.empty())
+        return;
+
+    if (globalErrors.size() < 2)
+    {
+        qDebug() << "Недостаточно компонент для построения графиков глобальной погрешности";
+        return;
+    }
+
+    auto* seriesY0 = new QtCharts::QLineSeries();
+    auto* seriesY1 = new QtCharts::QLineSeries();
+
+    seriesY0->setName("E(1) - глобальная погрешность первой компоненты");
+    seriesY1->setName("E(2) - глобальная погрешность второй компоненты");
+
+    const std::vector<QColor> colors = {Qt::green, Qt::magenta};
+    seriesY0->setColor(colors[0]);
+    seriesY1->setColor(colors[1]);
+
+    for (const auto& point : globalErrors[0])
+    {
+        seriesY0->append(point.x(), point.y());
+    }
+    for (const auto& point : globalErrors[1])
+    {
+        seriesY1->append(point.x(), point.y());
+    }
+
+    m_globalErrorChart->removeAllSeries();
+    m_globalErrorChart->addSeries(seriesY0);
+    m_globalErrorChart->addSeries(seriesY1);
+    m_globalErrorChart->createDefaultAxes();
+
+    auto* axisY = qobject_cast<QtCharts::QValueAxis*>(m_globalErrorChart->axes(Qt::Vertical).first());
+    if (axisY)
+    {
+        axisY->setLabelFormat("%.6g");
+    }
+
+    auto* axisX = qobject_cast<QtCharts::QValueAxis*>(m_globalErrorChart->axes(Qt::Horizontal).first());
+    if (axisX)
+    {
+        axisX->setLabelFormat("%.6g");
+    }
+
+    m_globalErrorChart->setTitle("График глобальной погрешности");
+}
 }

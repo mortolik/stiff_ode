@@ -1,7 +1,7 @@
 #include <QLabel>
+#include <QGroupBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QGroupBox>
 #include <QPushButton>
 #include <QLineSeries>
 #include <QDoubleSpinBox>
@@ -97,6 +97,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_startTimeSpinBox->setRange(0, 10000);
     m_startTimeSpinBox->setDecimals(3);
     m_startTimeSpinBox->setValue(0);
+    m_startTimeSpinBox->setSingleStep(0.001);
     inputLayout1->addWidget(startTimeLabel);
     inputLayout1->addWidget(m_startTimeSpinBox);
 
@@ -105,6 +106,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_endTimeSpinBox->setRange(0, 10000);
     m_endTimeSpinBox->setDecimals(3);
     m_endTimeSpinBox->setValue(1.0);
+    m_endTimeSpinBox->setSingleStep(0.001);
     inputLayout1->addWidget(endTimeLabel);
     inputLayout1->addWidget(m_endTimeSpinBox);
 
@@ -123,6 +125,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_startExactTimeSpinBox->setRange(0, 10000);
     m_startExactTimeSpinBox->setDecimals(3);
     m_startExactTimeSpinBox->setValue(0);
+    m_startExactTimeSpinBox->setSingleStep(0.001);
     inputLayout2->addWidget(startExactTimeLabel);
     inputLayout2->addWidget(m_startExactTimeSpinBox);
     QLabel *endExactTimeLabel = new QLabel("Конечное время:", this);
@@ -130,6 +133,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_endExactTimeSpinBox->setRange(0, 10000);
     m_endExactTimeSpinBox->setDecimals(2);
     m_endExactTimeSpinBox->setValue(100.0);
+    m_endExactTimeSpinBox->setSingleStep(0.001);
     inputLayout2->addWidget(endExactTimeLabel);
     inputLayout2->addWidget(m_endExactTimeSpinBox);
 
