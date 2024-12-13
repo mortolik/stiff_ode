@@ -60,14 +60,20 @@ void StiffOdeWidget::setupUi()
     errorChartLayout->addWidget(globalErrorChartView);
     errorChartTab->setLayout(errorChartLayout);
 
+    m_solutionComparisonTab = new QWidget(this);
+    QVBoxLayout* comparisonLayout = new QVBoxLayout(m_solutionComparisonTab);
+    m_solutionComparisonTab->setLayout(comparisonLayout);
+
     tabWidget->addTab(chartTab, "График численного решения");
     tabWidget->addTab(tableTab, "Таблица");
     tabWidget->addTab(exactChartTab, "График точного решения");
     tabWidget->addTab(errorChartTab, "График глобальной погрешности");
+    tabWidget->addTab(m_solutionComparisonTab, "Сравнение решений");
 
     layout->addWidget(tabWidget);
     setLayout(layout);
 }
+
 void StiffOdeWidget::populateTableAndChart()
 {
     const auto& seriesList = m_model->getSeries();
@@ -270,52 +276,57 @@ void StiffOdeWidget::populateSolutionComparisonChart()
     QChart* chartY0 = new QChart();
     chartY0->addSeries(numericalY0);
     chartY0->addSeries(exactY0);
-    chartY0->createDefaultAxes();
+
+    auto* axisX0 = new QtCharts::QValueAxis();
+    axisX0->setLabelFormat("%.6g");
+    axisX0->setTitleText("Время");
+    chartY0->addAxis(axisX0, Qt::AlignBottom);
+    numericalY0->attachAxis(axisX0);
+    exactY0->attachAxis(axisX0);
+
+    auto* axisY0 = new QtCharts::QValueAxis();
+    axisY0->setLabelFormat("%.6g");
+    axisY0->setTitleText("Значение");
+    chartY0->addAxis(axisY0, Qt::AlignLeft);
+    numericalY0->attachAxis(axisY0);
+    exactY0->attachAxis(axisY0);
+
     chartY0->setTitle("Решение первой компоненты");
-    QPen penExact(Qt::blue);
-    penExact.setWidth(2);
-    exactY0->setPen(penExact);
-    QPen penNumerical(Qt::red);
-    penNumerical.setWidth(2);
-    numericalY0->setPen(penNumerical);
 
     QChart* chartY1 = new QChart();
     chartY1->addSeries(numericalY1);
     chartY1->addSeries(exactY1);
-    chartY1->createDefaultAxes();
+
+    auto* axisX1 = new QtCharts::QValueAxis();
+    axisX1->setLabelFormat("%.6g");
+    axisX1->setTitleText("Время");
+    chartY1->addAxis(axisX1, Qt::AlignBottom);
+    numericalY1->attachAxis(axisX1);
+    exactY1->attachAxis(axisX1);
+
+    auto* axisY1 = new QtCharts::QValueAxis();
+    axisY1->setLabelFormat("%.6g");
+    axisY1->setTitleText("Значение");
+    chartY1->addAxis(axisY1, Qt::AlignLeft);
+    numericalY1->attachAxis(axisY1);
+    exactY1->attachAxis(axisY1);
+
     chartY1->setTitle("Решение второй компоненты");
-    exactY1->setPen(penExact);
-    numericalY1->setPen(penNumerical);
 
-    QVBoxLayout* layout = new QVBoxLayout();
-    QChartView* chartViewY0 = new QChartView(chartY0);
-    QChartView* chartViewY1 = new QChartView(chartY1);
-
-    layout->addWidget(chartViewY0);
-    layout->addWidget(chartViewY1);
-
-    QWidget* comparisonTab = new QWidget();
-    comparisonTab->setLayout(layout);
-    m_chart->createDefaultAxes();
-
-    auto* axisY = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Vertical).first());
-    if (axisY)
+    auto* layout = qobject_cast<QVBoxLayout*>(m_solutionComparisonTab->layout());
+    if (layout)
     {
-        axisY->setLabelFormat("%.6g");
-    }
+        while (QLayoutItem* item = layout->takeAt(0))
+        {
+            delete item->widget();
+            delete item;
+        }
 
-    auto* axisX = qobject_cast<QtCharts::QValueAxis*>(m_chart->axes(Qt::Horizontal).first());
-    if (axisX)
-    {
-        axisX->setLabelFormat("%.6g");
-    }
+        QChartView* chartViewY0 = new QChartView(chartY0);
+        QChartView* chartViewY1 = new QChartView(chartY1);
 
-    m_chart->setTitle("Решение жёсткой системы ОДУ");
-
-    QTabWidget* tabWidget = findChild<QTabWidget*>();
-    if (tabWidget)
-    {
-        tabWidget->addTab(comparisonTab, "Сравнение решений");
+        layout->addWidget(chartViewY0);
+        layout->addWidget(chartViewY1);
     }
 }
 

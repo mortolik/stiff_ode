@@ -77,21 +77,19 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
     if (exactSolution.empty() || numericalSolution.empty())
         return {};
 
-    size_t numSteps = numericalSolution[0]->count(); // Количество временных шагов
-    size_t numComponents = numericalSolution.size(); // Количество компонент системы
+    size_t numSteps = numericalSolution[0]->count();
+    size_t numComponents = numericalSolution.size();
 
-    // Вектор для хранения погрешностей каждой компоненты
     std::vector<std::vector<QPointF>> globalErrors(numComponents);
 
     for (size_t i = 0; i < numSteps; ++i) {
-        double t = numericalSolution[0]->at(i).x(); // Время из первой компоненты
+        double t = numericalSolution[0]->at(i).x();
 
         for (size_t j = 0; j < numComponents; ++j) {
-            double numericalValue = numericalSolution[j]->at(i).y(); // Значение численного решения
-            double exactValue = exactSolution[i * numComponents + j].y(); // Точное значение
+            double numericalValue = numericalSolution[j]->at(i).y();
+            double exactValue = exactSolution[i * numComponents + j].y();
             double error = numericalValue - exactValue;
 
-            // Добавляем погрешность для текущей компоненты
             globalErrors[j].emplace_back(t, error);
         }
     }

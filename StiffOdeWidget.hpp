@@ -32,5 +32,6 @@ private:
     QChart* m_chart;
     QChart* m_exactChart;
     QChart* m_globalErrorChart;
+    QWidget* m_solutionComparisonTab;
 };
 }
