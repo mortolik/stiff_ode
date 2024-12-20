@@ -67,6 +67,12 @@ MainWindow::~MainWindow()
 {
     delete m_model;
     delete m_widget;
+    Ui::MainWindow *ui;
+    delete m_stepSizeSpinBox;
+    delete m_startTimeSpinBox;
+    delete m_endTimeSpinBox;
+    delete m_endExactTimeSpinBox;
+    delete m_startExactTimeSpinBox;
 }
 
 QHBoxLayout* MainWindow::createGroupbox()

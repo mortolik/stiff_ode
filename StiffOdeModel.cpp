@@ -43,7 +43,6 @@ void StiffOdeModel::setParameters(double stepSize, double endTime, double endExa
 
 std::vector<QPointF> StiffOdeModel::computeExactSolution() const
 {
-
     Eigen::Matrix2d A;
     A << -500.005, 499.995,
         499.995, -500.005;
@@ -57,17 +56,26 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
 
     std::vector<QPointF> exactSolution;
     double t = m_startExactTime;
+    const double stopThreshold = 1e-09;
+
     while (t <= m_endExactTime)
     {
         Eigen::Vector2d solution = coefficients[0] * exp(eigenValues[0] * t) * eigenVectors.col(0) +
                                    coefficients[1] * exp(eigenValues[1] * t) * eigenVectors.col(1);
 
+        if (std::abs(solution[0]) <= stopThreshold || std::abs(solution[1]) <= stopThreshold)
+        {
+            break;
+        }
+
         exactSolution.emplace_back(t, solution[0]);
         exactSolution.emplace_back(t, solution[1]);
         t += m_stepSize;
     }
+
     return exactSolution;
 }
+
 
 std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
 {
@@ -81,6 +89,7 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
     size_t numComponents = numericalSolution.size();
 
     std::vector<std::vector<QPointF>> globalErrors(numComponents);
+    const double stopThreshold = 1e-09;
 
     for (size_t i = 0; i < numSteps; ++i) {
         double t = numericalSolution[0]->at(i).x();
@@ -88,8 +97,13 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
         for (size_t j = 0; j < numComponents; ++j) {
             double numericalValue = numericalSolution[j]->at(i).y();
             double exactValue = exactSolution[i * numComponents + j].y();
-            double error = numericalValue - exactValue;
 
+            if (std::abs(numericalValue) <= stopThreshold || std::abs(exactValue) <= stopThreshold) {
+                qDebug() << "Stopped due to value exceeding threshold at t =" << t;
+                return globalErrors;
+            }
+
+            double error = numericalValue - exactValue;
             globalErrors[j].emplace_back(t, error);
         }
     }
@@ -108,6 +122,8 @@ void StiffOdeModel::solve()
         return;
 
     size_t numEquations = m_initialConditions.size();
+    const size_t maxSteps = 1e6; // Ограничение на количество шагов
+    size_t currentStep = 0;
 
     for (auto* series : m_series)
     {
@@ -122,11 +138,21 @@ void StiffOdeModel::solve()
 
     std::vector<double> y = m_initialConditions;
     double t = m_startTime;
+    const double stopThreshold = 1e-09;
 
     while (t <= m_endTime)
     {
+        if (currentStep++ > maxSteps) {
+            qDebug() << "Stopped due to exceeding maximum number of steps.";
+            return;
+        }
+
         for (size_t i = 0; i < numEquations; ++i)
         {
+            if (std::abs(y[i]) <= stopThreshold) {
+                qDebug() << "Stopped due to value exceeding threshold at t =" << t;
+                return;
+            }
             m_series[i]->append(t, y[i]);
         }
 
@@ -159,7 +185,6 @@ void StiffOdeModel::solve()
         t = tNext;
     }
 }
-
 
 const std::vector<QLineSeries*>& StiffOdeModel::getSeries() const
 {
