@@ -47,6 +47,12 @@ void StiffOdeWidget::setupUi()
     QWidget* tableTab = new QWidget(this);
     QVBoxLayout* tableLayout = new QVBoxLayout(tableTab);
     tableLayout->addWidget(m_tableWidget);
+
+    m_errorSummaryText = new QTextEdit(this);
+    m_errorSummaryText->setReadOnly(true);
+    m_errorSummaryText->setMaximumHeight(150);
+    tableLayout->addWidget(m_errorSummaryText);
+
     tableTab->setLayout(tableLayout);
 
     QChartView* exactChartView = new QChartView(this);
@@ -72,16 +78,16 @@ void StiffOdeWidget::setupUi()
     m_exactValuesTab->setLayout(exactValuesLayout);
 
     tabWidget->addTab(chartTab, "График численного решения");
-    tabWidget->addTab(tableTab, "Таблица");
+    tabWidget->addTab(tableTab, "Таблица и справка");
     tabWidget->addTab(exactChartTab, "График точного решения");
     tabWidget->addTab(errorChartTab, "График глобальной погрешности");
     tabWidget->addTab(m_solutionComparisonTab, "Сравнение решений");
     tabWidget->addTab(m_exactValuesTab, "Точные значения");
 
-
     layout->addWidget(tabWidget);
     setLayout(layout);
 }
+
 
 void StiffOdeWidget::populateTableAndChart()
 {
@@ -247,7 +253,7 @@ void StiffOdeWidget::populateGlobalErrorChart()
 
     if (globalErrors.size() < 2)
     {
-        qDebug() << "Недостаточно компонент для построения графиков глобальной погрешности";
+        m_errorSummaryText->setText("Недостаточно компонент для построения графиков глобальной погрешности.");
         return;
     }
 
@@ -261,15 +267,43 @@ void StiffOdeWidget::populateGlobalErrorChart()
     seriesY0->setColor(colors[0]);
     seriesY1->setColor(colors[1]);
 
-    for (const auto& point : globalErrors[0])
+    double maxErrorY0 = std::numeric_limits<double>::lowest();
+    double minErrorY0 = std::numeric_limits<double>::max();
+    double maxErrorStepY0 = 0.0, minErrorStepY0 = 0.0;
+
+    double maxErrorY1 = std::numeric_limits<double>::lowest();
+    double minErrorY1 = std::numeric_limits<double>::max();
+    double maxErrorStepY1 = 0.0, minErrorStepY1 = 0.0;
+
+    for (size_t i = 1; i < globalErrors[0].size(); ++i)
     {
+        const auto& point = globalErrors[0][i];
         seriesY0->append(point.x(), point.y());
-    }
-    for (const auto& point : globalErrors[1])
-    {
-        seriesY1->append(point.x(), point.y());
+
+        if (point.y() > maxErrorY0) {
+            maxErrorY0 = point.y();
+            maxErrorStepY0 = point.x();
+        }
+        if (point.y() < minErrorY0) {
+            minErrorY0 = point.y();
+            minErrorStepY0 = point.x();
+        }
     }
 
+    for (size_t i = 1; i < globalErrors[1].size(); ++i)
+    {
+        const auto& point = globalErrors[1][i];
+        seriesY1->append(point.x(), point.y());
+
+        if (point.y() > maxErrorY1) {
+            maxErrorY1 = point.y();
+            maxErrorStepY1 = point.x();
+        }
+        if (point.y() < minErrorY1) {
+            minErrorY1 = point.y();
+            minErrorStepY1 = point.x();
+        }
+    }
     m_globalErrorChart->removeAllSeries();
     m_globalErrorChart->addSeries(seriesY0);
     m_globalErrorChart->addSeries(seriesY1);
@@ -288,6 +322,19 @@ void StiffOdeWidget::populateGlobalErrorChart()
     }
 
     m_globalErrorChart->setTitle("График глобальной погрешности");
+
+    QString summaryText;
+
+    summaryText += QString("Первая компонента:\n");
+    summaryText += QString("  Максимальная погрешность: %1 на шаге %2\n").arg(maxErrorY0).arg(maxErrorStepY0);
+    summaryText += QString("  Минимальная погрешность: %1 на шаге %2\n").arg(minErrorY0).arg(minErrorStepY0);
+
+    summaryText += QString("\nВторая компонента:\n");
+    summaryText += QString("  Максимальная погрешность: %1 на шаге %2\n").arg(maxErrorY1).arg(maxErrorStepY1);
+    summaryText += QString("  Минимальная погрешность: %1 на шаге %2\n").arg(minErrorY1).arg(minErrorStepY1);
+    summaryText += QString("\nКоличество шагов: %1 \n").arg(globalErrors[1].size());
+
+    m_errorSummaryText->setText(summaryText);
 }
 
 void StiffOdeWidget::populateSolutionComparisonChart()
@@ -328,14 +375,14 @@ void StiffOdeWidget::populateSolutionComparisonChart()
 
     auto* axisX0 = new QtCharts::QValueAxis();
     axisX0->setLabelFormat("%.6g");
-    axisX0->setTitleText("x_n");
+    axisX0->setTitleText("Значения x");
     chartY0->addAxis(axisX0, Qt::AlignBottom);
     numericalY0->attachAxis(axisX0);
     exactY0->attachAxis(axisX0);
 
     auto* axisY0 = new QtCharts::QValueAxis();
     axisY0->setLabelFormat("%.6g");
-    axisY0->setTitleText("Значение");
+    axisY0->setTitleText("Значения u(1) и v(2)");
     chartY0->addAxis(axisY0, Qt::AlignLeft);
     numericalY0->attachAxis(axisY0);
     exactY0->attachAxis(axisY0);
@@ -348,14 +395,14 @@ void StiffOdeWidget::populateSolutionComparisonChart()
 
     auto* axisX1 = new QtCharts::QValueAxis();
     axisX1->setLabelFormat("%.6g");
-    axisX1->setTitleText("x_n");
+    axisX1->setTitleText("Значения x");
     chartY1->addAxis(axisX1, Qt::AlignBottom);
     numericalY1->attachAxis(axisX1);
     exactY1->attachAxis(axisX1);
 
     auto* axisY1 = new QtCharts::QValueAxis();
     axisY1->setLabelFormat("%.6g");
-    axisY1->setTitleText("Значение");
+    axisY1->setTitleText("Значения u(2) и v(2)");
     chartY1->addAxis(axisY1, Qt::AlignLeft);
     numericalY1->attachAxis(axisY1);
     exactY1->attachAxis(axisY1);
@@ -387,7 +434,7 @@ void StiffOdeWidget::populateExactValuesTable()
 
     QTableWidget* exactValuesTable = new QTableWidget(this);
     exactValuesTable->setRowCount(exactSolution.size() / 2);
-    exactValuesTable->setColumnCount(5);
+    exactValuesTable->setColumnCount(6);
 
     QStringList headers;
     headers << "n" << "x_n" << "exp(-0.01 * x)" << "exp(-1000 * x)" << "u(1) (точное)" << "u(2) (точное)";

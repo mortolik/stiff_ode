@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QTextEdit>
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
@@ -35,5 +36,7 @@ private:
     QChart* m_exactChart;
     QChart* m_globalErrorChart;
     QWidget* m_solutionComparisonTab;
+    QTextEdit* m_errorSummaryText;
+
 };
 }

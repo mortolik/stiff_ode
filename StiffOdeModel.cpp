@@ -122,7 +122,7 @@ void StiffOdeModel::solve()
         return;
 
     size_t numEquations = m_initialConditions.size();
-    const size_t maxSteps = 1e6; // Ограничение на количество шагов
+    const size_t maxSteps = 1e6;
     size_t currentStep = 0;
 
     for (auto* series : m_series)
