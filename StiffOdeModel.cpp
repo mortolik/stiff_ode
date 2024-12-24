@@ -125,63 +125,60 @@ void StiffOdeModel::solve()
     const size_t maxSteps = 1e6;
     size_t currentStep = 0;
 
-    for (auto* series : m_series)
-    {
+    for (auto* series : m_series) {
         delete series;
     }
     m_series.clear();
 
-    for (size_t i = 0; i < numEquations; ++i)
-    {
+    for (size_t i = 0; i < numEquations; ++i) {
         m_series.push_back(new QLineSeries(this));
     }
 
     std::vector<double> y = m_initialConditions;
     double t = m_startTime;
     const double stopThreshold = 1e-09;
+    bool stopFlag = false; // Флаг остановки
 
-    while (t <= m_endTime)
-    {
-        if (currentStep++ > maxSteps) {
-            qDebug() << "Stopped due to exceeding maximum number of steps.";
-            return;
+    // Матрица Якобиана (для вашей системы она постоянна)
+    Eigen::Matrix2d A;
+    A << -500.005, 499.995,
+        499.995, -500.005;
+
+    // Матрица (I - hA)
+    Eigen::Matrix2d I = Eigen::Matrix2d::Identity();
+    Eigen::Matrix2d M = I - m_stepSize * A;
+
+    // Предварительно инвертируем матрицу, так как система линейная
+    Eigen::Matrix2d M_inv = M.inverse();
+
+    while (t <= m_endTime && !stopFlag) {
+        // Проверка порогового значения
+        bool belowThreshold = std::all_of(y.begin(), y.end(),
+                                          [stopThreshold](double val) { return std::abs(val) <= stopThreshold; });
+
+        if (belowThreshold) {
+            qDebug() << "Stopped due to value exceeding threshold at t =" << t;
+            break;
         }
 
-        for (size_t i = 0; i < numEquations; ++i)
-        {
-            if (std::abs(y[i]) <= stopThreshold) {
-                qDebug() << "Stopped due to value exceeding threshold at t =" << t;
-                return;
-            }
+        if (currentStep++ > maxSteps) {
+            qDebug() << "Stopped due to exceeding maximum number of steps.";
+            break;
+        }
+
+        // Записываем текущие значения в график
+        for (size_t i = 0; i < numEquations; ++i) {
             m_series[i]->append(t, y[i]);
         }
 
-        std::vector<double> yNext = y;
+        // Вычисляем следующее значение
         double tNext = t + m_stepSize;
 
-        for (int iteration = 0; iteration < 100; ++iteration)
-        {
-            std::vector<double> fValue = m_system(y, t);
-            std::vector<double> yTemp = yNext;
-            for (size_t i = 0; i < numEquations; ++i)
-            {
-                yNext[i] = y[i] + m_stepSize * fValue[i];
-            }
+        // Решаем линейную систему (I - hA)y_{n+1} = y_n
+        Eigen::Vector2d yVec(y[0], y[1]);
+        Eigen::Vector2d yNextVec = M_inv * yVec;
 
-            double maxDiff = 0.0;
-            for (size_t i = 0; i < numEquations; ++i)
-            {
-                maxDiff = std::max(maxDiff, std::abs(yNext[i] - yTemp[i]));
-            }
-            if (maxDiff < 1e-6)
-                break;
-            if (iteration == 99)
-            {
-                qDebug() << "Warning: Method did not converge at t = " << tNext;
-            }
-        }
-
-        y = yNext;
+        y = { yNextVec[0], yNextVec[1] };
         t = tNext;
     }
 }
