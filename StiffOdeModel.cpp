@@ -183,6 +183,8 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
     return globalErrors;
 }
 
+double StiffOdeModel::getStepSize() {return m_stepSize;}
+
 const std::vector<QLineSeries*>& StiffOdeModel::getSeries() const
 {
     return m_series;

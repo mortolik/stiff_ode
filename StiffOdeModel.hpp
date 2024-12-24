@@ -21,6 +21,7 @@ public:
     std::vector<QPointF> computeExactSolution() const;
     std::vector<std::vector<QPointF>>computeGlobalError() const;
     double getExactEndTime();
+    double getStepSize();;
 
 private:
     std::function<std::vector<double>(const std::vector<double>&, double)> m_system;

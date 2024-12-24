@@ -268,12 +268,10 @@ void StiffOdeWidget::populateGlobalErrorChart()
                          : 1;
 
     double maxErrorY0 = std::numeric_limits<double>::lowest();
-    double minErrorY0 = std::numeric_limits<double>::max();
-    double maxErrorStepY0 = 0.0, minErrorStepY0 = 0.0;
+    double maxErrorStepY0 = 0.0;
 
     double maxErrorY1 = std::numeric_limits<double>::lowest();
-    double minErrorY1 = std::numeric_limits<double>::max();
-    double maxErrorStepY1 = 0.0, minErrorStepY1 = 0.0;
+    double maxErrorStepY1 = 0.0;
 
     for (size_t i = 0; i < numSteps; i += skipFactor)
     {
@@ -283,23 +281,15 @@ void StiffOdeWidget::populateGlobalErrorChart()
         seriesY0->append(point0.x(), point0.y());
         seriesY1->append(point1.x(), point1.y());
 
-        // Обновление максимальных и минимальных значений
+        // Обновление максимальных значений
         if (point0.y() > maxErrorY0) {
             maxErrorY0 = point0.y();
             maxErrorStepY0 = point0.x();
-        }
-        if (point0.y() < minErrorY0) {
-            minErrorY0 = point0.y();
-            minErrorStepY0 = point0.x();
         }
 
         if (point1.y() > maxErrorY1) {
             maxErrorY1 = point1.y();
             maxErrorStepY1 = point1.x();
-        }
-        if (point1.y() < minErrorY1) {
-            minErrorY1 = point1.y();
-            minErrorStepY1 = point1.x();
         }
     }
 
@@ -322,16 +312,31 @@ void StiffOdeWidget::populateGlobalErrorChart()
 
     m_globalErrorChart->setTitle("График глобальной погрешности");
 
+    // Получение последних численных решений
+    const auto& series = m_model->getSeries();
+    QString lastSolutionsText;
+    if (!series.empty())
+    {
+        double lastX = series[0]->at(series[0]->count() - 1).x();
+        lastSolutionsText += QString("\nПоследний x: %1").arg(lastX);
+
+        for (size_t i = 0; i < series.size(); ++i)
+        {
+            double lastY = series[i]->at(series[i]->count() - 1).y();
+            lastSolutionsText += QString("\nПоследнее значение компоненты %1: %2").arg(i + 1).arg(lastY);
+        }
+    }
+
     QString summaryText;
 
-    summaryText += QString("Первая компонента:\n");
+    summaryText += QString("Задача была решена с шагом: %1 \n").arg(m_model->getStepSize());
+    summaryText += QString("\nПервая компонента:\n");
     summaryText += QString("  Максимальная погрешность: %1 в точке x = %2\n").arg(maxErrorY0).arg(maxErrorStepY0);
-    summaryText += QString("  Минимальная погрешность: %1 в точке x = %2\n").arg(minErrorY0).arg(minErrorStepY0);
 
     summaryText += QString("\nВторая компонента:\n");
     summaryText += QString("  Максимальная погрешность: %1 в точке x = %2\n").arg(maxErrorY1).arg(maxErrorStepY1);
-    summaryText += QString("  Минимальная погрешность: %1 в точке x = %2\n").arg(minErrorY1).arg(minErrorStepY1);
     summaryText += QString("\nКоличество шагов: %1 \n").arg(numSteps);
+    summaryText += lastSolutionsText;
 
     m_errorSummaryText->setText(summaryText);
 }
