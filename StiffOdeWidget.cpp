@@ -17,11 +17,15 @@ namespace StiffOde
 StiffOdeWidget::StiffOdeWidget(StiffOdeModel* model, QWidget* parent)
     : QWidget(parent),
     m_model(model),
-    m_tableWidget(new QTableWidget(this)),
+    m_tableView(new QTableView(this)),
+    m_tableModel(new StiffOdeTableModel(this)),
     m_chartView(new QChartView(this)),
     m_chart(new QChart),
     m_exactChart(new QChart),
-    m_globalErrorChart(new QChart)
+    m_globalErrorChart(new QChart),
+    m_solutionComparisonTab(new QWidget(this)),
+    m_exactValuesTab(new QWidget(this)),
+    m_errorSummaryText(new QTextEdit(this))
 {
     setupUi();
 
@@ -38,56 +42,60 @@ void StiffOdeWidget::setupUi()
 
     QTabWidget* tabWidget = new QTabWidget(this);
 
+    // Основной график
     m_chartView->setChart(m_chart);
     QWidget* chartTab = new QWidget(this);
     QVBoxLayout* chartLayout = new QVBoxLayout(chartTab);
     chartLayout->addWidget(m_chartView);
     chartTab->setLayout(chartLayout);
 
+    // Таблица и справка
     QWidget* tableTab = new QWidget(this);
     QVBoxLayout* tableLayout = new QVBoxLayout(tableTab);
-    tableLayout->addWidget(m_tableWidget);
+    tableLayout->addWidget(m_tableView);
 
-    m_errorSummaryText = new QTextEdit(this);
     m_errorSummaryText->setReadOnly(true);
     m_errorSummaryText->setMaximumHeight(150);
     tableLayout->addWidget(m_errorSummaryText);
 
     tableTab->setLayout(tableLayout);
 
-    QChartView* exactChartView = new QChartView(this);
-    exactChartView->setChart(m_exactChart);
+    // График точного решения
+    m_exactChartView = new QChartView(this);
+    m_exactChartView->setChart(m_exactChart);
     QWidget* exactChartTab = new QWidget(this);
     QVBoxLayout* exactChartLayout = new QVBoxLayout(exactChartTab);
-    exactChartLayout->addWidget(exactChartView);
+    exactChartLayout->addWidget(m_exactChartView);
     exactChartTab->setLayout(exactChartLayout);
 
-    QChartView* globalErrorChartView = new QChartView(this);
-    globalErrorChartView->setChart(m_globalErrorChart);
+    // График глобальной погрешности
+    m_globalErrorChartView = new QChartView(this);
+    m_globalErrorChartView->setChart(m_globalErrorChart);
     QWidget* errorChartTab = new QWidget(this);
     QVBoxLayout* errorChartLayout = new QVBoxLayout(errorChartTab);
-    errorChartLayout->addWidget(globalErrorChartView);
+    errorChartLayout->addWidget(m_globalErrorChartView);
     errorChartTab->setLayout(errorChartLayout);
 
-    m_solutionComparisonTab = new QWidget(this);
-    QVBoxLayout* comparisonLayout = new QVBoxLayout(m_solutionComparisonTab);
-    m_solutionComparisonTab->setLayout(comparisonLayout);
+    // Сравнение решений
+    QWidget* solutionComparisonTab = m_solutionComparisonTab;
+    QVBoxLayout* comparisonLayout = new QVBoxLayout(solutionComparisonTab);
+    solutionComparisonTab->setLayout(comparisonLayout);
 
-    m_exactValuesTab = new QWidget(this);
-    QVBoxLayout* exactValuesLayout = new QVBoxLayout(m_exactValuesTab);
-    m_exactValuesTab->setLayout(exactValuesLayout);
+    // Точные значения
+    QWidget* exactValuesTab = m_exactValuesTab;
+    QVBoxLayout* exactValuesLayout = new QVBoxLayout(exactValuesTab);
+    exactValuesTab->setLayout(exactValuesLayout);
 
     tabWidget->addTab(chartTab, "График численного решения");
     tabWidget->addTab(tableTab, "Таблица и справка");
     tabWidget->addTab(exactChartTab, "График точного решения");
     tabWidget->addTab(errorChartTab, "График глобальной погрешности");
-    tabWidget->addTab(m_solutionComparisonTab, "Сравнение решений");
-    tabWidget->addTab(m_exactValuesTab, "Точные значения");
+    tabWidget->addTab(solutionComparisonTab, "Сравнение решений");
+    tabWidget->addTab(exactValuesTab, "Точные значения");
 
     layout->addWidget(tabWidget);
     setLayout(layout);
 }
-
 
 void StiffOdeWidget::populateTableAndChart()
 {
@@ -98,77 +106,70 @@ void StiffOdeWidget::populateTableAndChart()
     if (seriesList.empty() || exactSolution.empty() || globalErrors.empty())
         return;
 
-    int numPoints = seriesList[0]->count();
-    int numVariables = static_cast<int>(seriesList.size());
+    size_t numSteps = seriesList[0]->count();
+    size_t numVariables = seriesList.size();
 
-    m_tableWidget->setRowCount(numPoints);
-    m_tableWidget->setColumnCount(2 + numVariables * 3);
-
-    for (int col = 0; col < m_tableWidget->columnCount(); ++col)
-    {
-        m_tableWidget->setColumnWidth(col, 25 * QFontMetrics(m_tableWidget->font()).horizontalAdvance('0'));
+    // Проверка соответствия размеров
+    size_t maxAllowedSteps = exactSolution.size() / numVariables;
+    if (numSteps > maxAllowedSteps) {
+        qDebug() << "Численное решение превышает количество точек точного решения.";
+        numSteps = maxAllowedSteps; // Ограничиваем количество шагов
     }
 
-    QStringList headers;
-    headers << "n" << "x_n";
-    for (int i = 0; i < numVariables; ++i)
-    {
-        headers << QString("u(%1) (точное)").arg(i + 1);
-    }
-    for (int i = 0; i < numVariables; ++i)
-    {
-        headers << QString("u(%1) (численное)").arg(i + 1);
-    }
-    for (int i = 0; i < numVariables; ++i)
-    {
-        headers << QString("E (погрешность)").arg(i + 1);
-    }
-    m_tableWidget->setHorizontalHeaderLabels(headers);
-    m_tableWidget->verticalHeader()->setVisible(false);
+    // Извлекаем данные для модели таблицы
+    std::vector<QPointF> numericalSeries0;
+    std::vector<QPointF> numericalSeries1;
+    std::vector<QPointF> exactSeries0;
+    std::vector<QPointF> exactSeries1;
+    std::vector<QPointF> error0;
+    std::vector<QPointF> error1;
 
-    for (int i = 0; i < numPoints; ++i)
-    {
-        QTableWidgetItem* rowIndexItem = new QTableWidgetItem(QString::number(i));
-        m_tableWidget->setItem(i, 0, rowIndexItem);
-        QTableWidgetItem* timeItem = new QTableWidgetItem(QString::number(seriesList[0]->at(i).x(), 'g', 16));
-        m_tableWidget->setItem(i, 1, timeItem);
+    for (size_t i = 0; i < numSteps; ++i) {
+        numericalSeries0.push_back(seriesList[0]->at(i));
+        if (numVariables > 1)
+            numericalSeries1.push_back(seriesList[1]->at(i));
 
-        for (int j = 0; j < numVariables; ++j)
-        {
-            double exactValue = exactSolution[i * numVariables + j].y();
-            QTableWidgetItem* exactItem = new QTableWidgetItem(QString::number(exactValue, 'g', 16));
-            m_tableWidget->setItem(i, 2 + j, exactItem);
-        }
+        exactSeries0.emplace_back(exactSolution[i * numVariables].x(), exactSolution[i * numVariables].y());
+        if (numVariables > 1)
+            exactSeries1.emplace_back(exactSolution[i * numVariables + 1].x(), exactSolution[i * numVariables + 1].y());
 
-        for (int j = 0; j < numVariables; ++j)
-        {
-            double numericalValue = seriesList[j]->at(i).y();
-            QTableWidgetItem* numericalItem = new QTableWidgetItem(QString::number(numericalValue, 'g', 16));
-            m_tableWidget->setItem(i, 2 + numVariables + j, numericalItem);
-        }
-
-        for (int j = 0; j < numVariables; ++j)
-        {
-            double errorValue = globalErrors[j][i].y();
-            QTableWidgetItem* errorItem = new QTableWidgetItem(QString::number(errorValue, 'g', 16));
-            m_tableWidget->setItem(i, 2 + 2 * numVariables + j, errorItem);
-        }
+        if (globalErrors.size() > 0)
+            error0.emplace_back(globalErrors[0][i].x(), globalErrors[0][i].y());
+        if (globalErrors.size() > 1)
+            error1.emplace_back(globalErrors[1][i].x(), globalErrors[1][i].y());
     }
 
+    // Устанавливаем данные в модель таблицы
+    m_tableModel->setData(numericalSeries0, numericalSeries1, exactSeries0, exactSeries1, error0, error1);
+    m_tableView->setModel(m_tableModel);
+
+    // Настройка таблицы для лучшей производительности
+    m_tableView->setSortingEnabled(true);
+    m_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    // Теперь строим график с пропуском точек
     m_chart->removeAllSeries();
-    for (int j = 0; j < numVariables; ++j)
+    for (size_t j = 0; j < numVariables; ++j)
     {
-        auto series = new QtCharts::QLineSeries();
-        series->setName(QString("u(%1)").arg(j + 1));
+        auto chartSeries = new QtCharts::QLineSeries();
+        chartSeries->setName(QString("u(%1)").arg(j + 1));
 
-        for (int i = 0; i < numPoints; ++i)
+        // Пропуск для графика
+        const int MAX_POINTS = 10000;
+        int skipFactor = (numSteps > MAX_POINTS)
+                             ? static_cast<int>(std::ceil(double(numSteps) / MAX_POINTS))
+                             : 1;
+
+        // Заполняем новую серию с учётом skipFactor
+        for (size_t i = 0; i < numSteps; i += skipFactor)
         {
-            double xValue = seriesList[0]->at(i).x();
+            double xValue = seriesList[j]->at(i).x();
             double yValue = seriesList[j]->at(i).y();
-            series->append(xValue, yValue);
+            chartSeries->append(xValue, yValue);
         }
 
-        m_chart->addSeries(series);
+        m_chart->addSeries(chartSeries);
     }
 
     m_chart->createDefaultAxes();
@@ -192,27 +193,24 @@ void StiffOdeWidget::populateExactChart()
     if (exactSolution.empty())
         return;
 
+    size_t numVariables = 2; // Предполагаем, что 2 переменные
+    size_t totalPairs = exactSolution.size() / numVariables;
     auto* seriesY0 = new QtCharts::QLineSeries();
     auto* seriesY1 = new QtCharts::QLineSeries();
 
     seriesY0->setName("Точное решение u(1)");
     seriesY1->setName("Точное решение u(2)");
 
-    int SKIP_POINTS = 1;
+    const int MAX_POINTS = 10000;
+    int skipFactor = (totalPairs > MAX_POINTS)
+                         ? static_cast<int>(std::ceil(double(totalPairs) / MAX_POINTS))
+                         : 1;
 
-    if (m_model->getExactEndTime() > 999)
+    for (size_t i = 0; i < totalPairs; i += skipFactor)
     {
-        SKIP_POINTS = 10;
-    }
-    else
-    {
-        SKIP_POINTS = 1;
-    }
-
-    for (size_t i = 0; i < exactSolution.size(); i += 2 * SKIP_POINTS)
-    {
-        const auto& pointY0 = exactSolution[i];
-        const auto& pointY1 = exactSolution[i + 1];
+        // i-я пара: [2*i] = y0, [2*i+1] = y1
+        const auto& pointY0 = exactSolution[2 * i];
+        const auto& pointY1 = exactSolution[2 * i + 1];
 
         seriesY0->append(pointY0.x(), pointY0.y());
         seriesY1->append(pointY1.x(), pointY1.y());
@@ -257,15 +255,17 @@ void StiffOdeWidget::populateGlobalErrorChart()
         return;
     }
 
+    size_t numSteps = globalErrors[0].size();
     auto* seriesY0 = new QtCharts::QLineSeries();
     auto* seriesY1 = new QtCharts::QLineSeries();
 
     seriesY0->setName("E(1) - глобальная погрешность первой компоненты");
     seriesY1->setName("E(2) - глобальная погрешность второй компоненты");
 
-    const std::vector<QColor> colors = {Qt::green, Qt::magenta};
-    seriesY0->setColor(colors[0]);
-    seriesY1->setColor(colors[1]);
+    const int MAX_POINTS = 10000;
+    int skipFactor = (numSteps > MAX_POINTS)
+                         ? static_cast<int>(std::ceil(double(numSteps) / MAX_POINTS))
+                         : 1;
 
     double maxErrorY0 = std::numeric_limits<double>::lowest();
     double minErrorY0 = std::numeric_limits<double>::max();
@@ -275,35 +275,34 @@ void StiffOdeWidget::populateGlobalErrorChart()
     double minErrorY1 = std::numeric_limits<double>::max();
     double maxErrorStepY1 = 0.0, minErrorStepY1 = 0.0;
 
-    for (size_t i = 1; i < globalErrors[0].size(); ++i)
+    for (size_t i = 0; i < numSteps; i += skipFactor)
     {
-        const auto& point = globalErrors[0][i];
-        seriesY0->append(point.x(), point.y());
+        const auto& point0 = globalErrors[0][i];
+        const auto& point1 = globalErrors[1][i];
 
-        if (point.y() > maxErrorY0) {
-            maxErrorY0 = point.y();
-            maxErrorStepY0 = point.x();
+        seriesY0->append(point0.x(), point0.y());
+        seriesY1->append(point1.x(), point1.y());
+
+        // Обновление максимальных и минимальных значений
+        if (point0.y() > maxErrorY0) {
+            maxErrorY0 = point0.y();
+            maxErrorStepY0 = point0.x();
         }
-        if (point.y() < minErrorY0) {
-            minErrorY0 = point.y();
-            minErrorStepY0 = point.x();
+        if (point0.y() < minErrorY0) {
+            minErrorY0 = point0.y();
+            minErrorStepY0 = point0.x();
+        }
+
+        if (point1.y() > maxErrorY1) {
+            maxErrorY1 = point1.y();
+            maxErrorStepY1 = point1.x();
+        }
+        if (point1.y() < minErrorY1) {
+            minErrorY1 = point1.y();
+            minErrorStepY1 = point1.x();
         }
     }
 
-    for (size_t i = 1; i < globalErrors[1].size(); ++i)
-    {
-        const auto& point = globalErrors[1][i];
-        seriesY1->append(point.x(), point.y());
-
-        if (point.y() > maxErrorY1) {
-            maxErrorY1 = point.y();
-            maxErrorStepY1 = point.x();
-        }
-        if (point.y() < minErrorY1) {
-            minErrorY1 = point.y();
-            minErrorStepY1 = point.x();
-        }
-    }
     m_globalErrorChart->removeAllSeries();
     m_globalErrorChart->addSeries(seriesY0);
     m_globalErrorChart->addSeries(seriesY1);
@@ -326,13 +325,13 @@ void StiffOdeWidget::populateGlobalErrorChart()
     QString summaryText;
 
     summaryText += QString("Первая компонента:\n");
-    summaryText += QString("  Максимальная погрешность: %1 в точке х =  %2\n").arg(maxErrorY0).arg(maxErrorStepY0);
-    summaryText += QString("  Минимальная погрешность: %1 в точке х =  %2\n").arg(minErrorY0).arg(minErrorStepY0);
+    summaryText += QString("  Максимальная погрешность: %1 в точке x = %2\n").arg(maxErrorY0).arg(maxErrorStepY0);
+    summaryText += QString("  Минимальная погрешность: %1 в точке x = %2\n").arg(minErrorY0).arg(minErrorStepY0);
 
     summaryText += QString("\nВторая компонента:\n");
-    summaryText += QString("  Максимальная погрешность: %1 в точке х =  %2\n").arg(maxErrorY1).arg(maxErrorStepY1);
-    summaryText += QString("  Минимальная погрешность: %1 в точке х =  %2\n").arg(minErrorY1).arg(minErrorStepY1);
-    summaryText += QString("\nКоличество шагов: %1 \n").arg(globalErrors[1].size());
+    summaryText += QString("  Максимальная погрешность: %1 в точке x = %2\n").arg(maxErrorY1).arg(maxErrorStepY1);
+    summaryText += QString("  Минимальная погрешность: %1 в точке x = %2\n").arg(minErrorY1).arg(minErrorStepY1);
+    summaryText += QString("\nКоличество шагов: %1 \n").arg(numSteps);
 
     m_errorSummaryText->setText(summaryText);
 }
@@ -345,6 +344,10 @@ void StiffOdeWidget::populateSolutionComparisonChart()
     if (numericalSeries.empty() || exactSolution.empty())
         return;
 
+    size_t numSteps = numericalSeries[0]->count();
+    size_t numVariables = numericalSeries.size();
+
+    // Предполагаем, что numVariables = 2
     auto* numericalY0 = new QtCharts::QLineSeries();
     auto* numericalY1 = new QtCharts::QLineSeries();
     auto* exactY0 = new QtCharts::QLineSeries();
@@ -355,18 +358,19 @@ void StiffOdeWidget::populateSolutionComparisonChart()
     exactY0->setName("Точное решение u(1)");
     exactY1->setName("Точное решение u(2)");
 
-    int numPoints = numericalSeries[0]->count();
-    for (int i = 0; i < numPoints; ++i)
+    const int MAX_POINTS = 10000;
+    int skipFactor = (numSteps > MAX_POINTS)
+                         ? static_cast<int>(std::ceil(double(numSteps) / MAX_POINTS))
+                         : 1;
+
+    for (size_t i = 0; i < numSteps; i += skipFactor)
     {
         double t = numericalSeries[0]->at(i).x();
         numericalY0->append(t, numericalSeries[0]->at(i).y());
         numericalY1->append(t, numericalSeries[1]->at(i).y());
-    }
 
-    for (size_t i = 0; i < exactSolution.size(); i += 2)
-    {
-        exactY0->append(exactSolution[i].x(), exactSolution[i].y());
-        exactY1->append(exactSolution[i + 1].x(), exactSolution[i + 1].y());
+        exactY0->append(exactSolution[i * numVariables].x(), exactSolution[i * numVariables].y());
+        exactY1->append(exactSolution[i * numVariables + 1].x(), exactSolution[i * numVariables + 1].y());
     }
 
     QChart* chartY0 = new QChart();
@@ -382,7 +386,7 @@ void StiffOdeWidget::populateSolutionComparisonChart()
 
     auto* axisY0 = new QtCharts::QValueAxis();
     axisY0->setLabelFormat("%.6g");
-    axisY0->setTitleText("Значения u(1) и v(2)");
+    axisY0->setTitleText("Значения u(1) и v(1)");
     chartY0->addAxis(axisY0, Qt::AlignLeft);
     numericalY0->attachAxis(axisY0);
     exactY0->attachAxis(axisY0);
@@ -412,6 +416,7 @@ void StiffOdeWidget::populateSolutionComparisonChart()
     auto* layout = qobject_cast<QVBoxLayout*>(m_solutionComparisonTab->layout());
     if (layout)
     {
+        // Очистка предыдущих графиков
         while (QLayoutItem* item = layout->takeAt(0))
         {
             delete item->widget();
@@ -453,10 +458,10 @@ void StiffOdeWidget::populateExactValuesTable()
         QTableWidgetItem* timeItem = new QTableWidgetItem(QString::number(t, 'f', 16));
         exactValuesTable->setItem(i, 1, timeItem);
 
-        QTableWidgetItem* expSmallItem = new QTableWidgetItem(QString::number(exp(-0.01 * t), 'f', 16));
+        QTableWidgetItem* expSmallItem = new QTableWidgetItem(QString::number(std::exp(-0.01 * t), 'f', 16));
         exactValuesTable->setItem(i, 2, expSmallItem);
 
-        QTableWidgetItem* expLargeItem = new QTableWidgetItem(QString::number(exp(-1000 * t), 'e', 16));
+        QTableWidgetItem* expLargeItem = new QTableWidgetItem(QString::number(std::exp(-1000 * t), 'e', 16));
         exactValuesTable->setItem(i, 3, expLargeItem);
 
         QTableWidgetItem* exactU1Item = new QTableWidgetItem(QString::number(u1, 'f', 16));
@@ -468,10 +473,10 @@ void StiffOdeWidget::populateExactValuesTable()
 
     exactValuesTable->horizontalHeader()->setMinimumSectionSize(25 * QFontMetrics(exactValuesTable->font()).horizontalAdvance('0'));
 
-
     QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(m_exactValuesTab->layout());
     if (layout)
     {
+        // Очистка предыдущих таблиц
         while (QLayoutItem* item = layout->takeAt(0))
         {
             delete item->widget();
@@ -480,5 +485,4 @@ void StiffOdeWidget::populateExactValuesTable()
         layout->addWidget(exactValuesTable);
     }
 }
-
 }

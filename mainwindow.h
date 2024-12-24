@@ -24,15 +24,14 @@ public:
     ~MainWindow();
 
 private:
-    Ui::MainWindow *ui;
-    StiffOde::StiffOdeModel* m_model {nullptr};
-    StiffOde::StiffOdeWidget* m_widget {nullptr};
-
-    QDoubleSpinBox * m_stepSizeSpinBox {nullptr};
-    QDoubleSpinBox * m_startTimeSpinBox {nullptr};
-    QDoubleSpinBox * m_endTimeSpinBox {nullptr};
-    QDoubleSpinBox * m_endExactTimeSpinBox {nullptr};
-    QDoubleSpinBox * m_startExactTimeSpinBox {nullptr};
-
     QHBoxLayout* createGroupbox();
+
+    StiffOde::StiffOdeModel* m_model = nullptr;
+    StiffOde::StiffOdeWidget* m_widget = nullptr;
+
+    QDoubleSpinBox* m_stepSizeSpinBox;
+    QDoubleSpinBox* m_startTimeSpinBox;
+    QDoubleSpinBox* m_endTimeSpinBox;
+    QDoubleSpinBox* m_endExactTimeSpinBox;
+    QDoubleSpinBox* m_startExactTimeSpinBox;
 };

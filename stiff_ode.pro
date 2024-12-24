@@ -13,12 +13,14 @@ CONFIG += c++17
 
 SOURCES += \
     StiffOdeModel.cpp \
+    StiffOdeTableModel.cpp \
     StiffOdeWidget.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     StiffOdeModel.hpp \
+    StiffOdeTableModel.hpp \
     StiffOdeWidget.hpp \
     mainwindow.h
 

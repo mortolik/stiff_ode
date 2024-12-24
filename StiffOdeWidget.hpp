@@ -1,24 +1,23 @@
-#pragma once
+// StiffOdeWidget.hpp
+#ifndef STIFFODEWIDGET_HPP
+#define STIFFODEWIDGET_HPP
 
 #include <QWidget>
-#include <QTextEdit>
-#include <QtCharts/QChart>
 #include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
-
-QT_FORWARD_DECLARE_CLASS(QTableWidget);
-
-using namespace QtCharts;
+#include <QtCharts/QChart>
+#include <QTextEdit>
+#include <QTableView>
+#include "StiffOdeModel.hpp"
+#include "StiffOdeTableModel.hpp"
 
 namespace StiffOde
 {
-class StiffOdeModel;
 class StiffOdeWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit StiffOdeWidget(StiffOdeModel* model, QWidget* parent = nullptr);
+    StiffOdeWidget(StiffOdeModel* model, QWidget* parent = nullptr);
 
 private:
     void setupUi();
@@ -29,14 +28,23 @@ private:
     void populateExactValuesTable();
 
     StiffOdeModel* m_model;
-    QTableWidget* m_tableWidget;
-    QWidget* m_exactValuesTab;
+    QTableView* m_tableView;
+    StiffOdeTableModel* m_tableModel;
+
     QChartView* m_chartView;
     QChart* m_chart;
-    QChart* m_exactChart;
-    QChart* m_globalErrorChart;
-    QWidget* m_solutionComparisonTab;
-    QTextEdit* m_errorSummaryText;
 
+    QChart* m_exactChart;
+    QChartView* m_exactChartView;
+
+    QChart* m_globalErrorChart;
+    QChartView* m_globalErrorChartView;
+
+    QWidget* m_solutionComparisonTab;
+    QWidget* m_exactValuesTab;
+
+    QTextEdit* m_errorSummaryText;
 };
 }
+
+#endif // STIFFODEWIDGET_HPP

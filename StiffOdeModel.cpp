@@ -10,9 +10,11 @@
 namespace StiffOde
 {
 StiffOdeModel::StiffOdeModel(QObject* parent)
-    : QObject(parent), m_startTime(0.0), m_endTime(0.0), m_stepSize(0.1)
+    : QObject(parent), m_startTime(0.0), m_endTime(0.0), m_stepSize(0.1),
+    m_endExactTime(0.0), m_startExactTime(0.0)
 {
-    m_system = [](const std::vector<double>& y, double t) -> std::vector<double>
+    // Инициализация системы по умолчанию
+    m_system = [](const std::vector<double>& y, double /*t*/) -> std::vector<double>
     {
         return
             {
@@ -41,6 +43,72 @@ void StiffOdeModel::setParameters(double stepSize, double endTime, double endExa
     m_startExactTime = startExactTime;
 }
 
+void StiffOdeModel::solve()
+{
+    if (!m_system || m_initialConditions.empty())
+        return;
+
+    // Очистим старые данные
+    qDeleteAll(m_series);
+    m_series.clear();
+
+    size_t numEquations = m_initialConditions.size();
+    for (size_t i = 0; i < numEquations; ++i) {
+        m_series.push_back(new QLineSeries(this));
+    }
+
+    std::vector<double> y = m_initialConditions;
+    double t = m_startTime;
+
+    const size_t maxSteps = 1e6; // ограничение на количество шагов
+    size_t currentStep = 0;
+
+    // Создаём матрицы для метода Эйлера (неявного)
+    Eigen::MatrixXd A(numEquations, numEquations);
+    // Заполнение матрицы A по вашей системе
+    A << -500.005, 499.995,
+        499.995, -500.005;
+
+    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(numEquations, numEquations);
+    Eigen::MatrixXd M = I - m_stepSize * A;
+    Eigen::MatrixXd M_inv = M.inverse();
+
+    while (t <= m_endTime)
+    {
+        bool belowThreshold = std::all_of(y.begin(), y.end(),
+                                          [](double val){ return std::abs(val) <= 1e-9; });
+        if (belowThreshold) {
+            qDebug() << "Stopped due to value falling below threshold at t =" << t;
+            break;
+        }
+
+        if (currentStep > maxSteps) {
+            qDebug() << "Stopped due to exceeding maximum number of steps.";
+            break;
+        }
+
+        // Запоминаем точку (добавляем *каждый* шаг в m_series)
+        for (size_t i = 0; i < numEquations; ++i) {
+            m_series[i]->append(t, y[i]);
+        }
+
+        // Считаем y_{n+1} = M_inv * y_n
+        Eigen::VectorXd yVec(numEquations);
+        for (size_t i = 0; i < numEquations; ++i)
+            yVec(i) = y[i];
+
+        Eigen::VectorXd yNextVec = M_inv * yVec;
+
+        for (size_t i = 0; i < numEquations; ++i)
+            y[i] = yNextVec(i);
+
+        t += m_stepSize;
+        currentStep++;
+    }
+
+    qDebug() << "Численное решение завершено. Количество шагов:" << currentStep;
+}
+
 std::vector<QPointF> StiffOdeModel::computeExactSolution() const
 {
     Eigen::Matrix2d A;
@@ -55,39 +123,34 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
     Eigen::Vector2d coefficients = eigenVectors.inverse() * initialConditions;
 
     std::vector<QPointF> exactSolution;
-    double t = m_startTime;
 
+    // Проверяем, есть ли численное решение
+    if (m_series.empty()) {
+        qDebug() << "Численное решение отсутствует или пусто.";
+        return exactSolution;
+    }
+
+    size_t numSteps = m_series[0]->count();
     const double threshold = 1e-15;
 
-    // Вычисляем общее количество шагов
-    double totalSteps = (m_endTime - m_startTime) / m_stepSize;
-    const int MAX_POINTS = 100000;
-    int skipFactor = (totalSteps > MAX_POINTS) ? static_cast<int>(std::ceil(totalSteps / MAX_POINTS)) : 1;
-
-    size_t currentStep = 0;
-
-    while (t <= m_endTime)
+    for (size_t i = 0; i < numSteps; ++i)
     {
-        // Сохраняем только каждую skipFactor-ю точку
-        if (currentStep % skipFactor == 0)
-        {
-            Eigen::Vector2d solution = coefficients[0] * exp(eigenValues[0] * t) * eigenVectors.col(0) +
-                                       coefficients[1] * exp(eigenValues[1] * t) * eigenVectors.col(1);
+        double t = m_series[0]->at(i).x();
 
-            double y0 = (std::abs(solution[0]) < threshold) ? 0.0 : solution[0];
-            double y1 = (std::abs(solution[1]) < threshold) ? 0.0 : solution[1];
+        Eigen::Vector2d solution = coefficients[0] * std::exp(eigenValues(0) * t) * eigenVectors.col(0) +
+                                   coefficients[1] * std::exp(eigenValues(1) * t) * eigenVectors.col(1);
 
-            exactSolution.emplace_back(t, y0);
-            exactSolution.emplace_back(t, y1);
-        }
+        double y0 = (std::abs(solution(0)) < threshold) ? 0.0 : solution(0);
+        double y1 = (std::abs(solution(1)) < threshold) ? 0.0 : solution(1);
 
-        t += m_stepSize;
-        currentStep++;
+        exactSolution.emplace_back(t, y0);
+        exactSolution.emplace_back(t, y1);
     }
+
+    qDebug() << "Точное решение завершено. Количество шагов:" << exactSolution.size() / 2;
 
     return exactSolution;
 }
-
 
 std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
 {
@@ -100,8 +163,8 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
     size_t numSteps = numericalSolution[0]->count();
     size_t numComponents = numericalSolution.size();
 
-    std::vector<std::vector<QPointF>> globalErrors(numComponents);
-    const double stopThreshold = 1e-09;
+    // Теперь количество точек совпадает
+    std::vector<std::vector<QPointF>> globalErrors(numComponents, std::vector<QPointF>());
 
     for (size_t i = 0; i < numSteps; ++i) {
         double t = numericalSolution[0]->at(i).x();
@@ -110,90 +173,14 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
             double numericalValue = numericalSolution[j]->at(i).y();
             double exactValue = exactSolution[i * numComponents + j].y();
 
-            // if (std::abs(numericalValue) <= stopThreshold || std::abs(exactValue) <= stopThreshold) {
-            //     qDebug() << "Stopped due to value exceeding threshold at t =" << t;
-            //     return globalErrors;
-            // }
-
             double error = numericalValue - exactValue;
             globalErrors[j].emplace_back(t, error);
         }
     }
 
+    qDebug() << "Глобальная погрешность вычислена.";
+
     return globalErrors;
-}
-
-double StiffOdeModel::getExactEndTime()
-{
-    return m_endExactTime;
-}
-void StiffOdeModel::solve()
-{
-    if (!m_system || m_initialConditions.empty())
-        return;
-
-    // Очистим старые данные
-    for (auto* series : m_series) {
-        delete series;
-    }
-    m_series.clear();
-
-    size_t numEquations = m_initialConditions.size();
-    for (size_t i = 0; i < numEquations; ++i) {
-        m_series.push_back(new QLineSeries(this));
-    }
-
-    std::vector<double> y = m_initialConditions;
-    double t = m_startTime;
-
-    const size_t maxSteps = 1e6;
-    size_t currentStep = 0;
-
-    // Аналогично вычислим skipFactor
-    double totalSteps = (m_endTime - m_startTime) / m_stepSize;
-    const int MAX_POINTS = 100000;
-    int skipFactor = (totalSteps > MAX_POINTS) ? static_cast<int>(std::ceil(totalSteps / MAX_POINTS)) : 1;
-
-    // Якобиан и матрицы для метода Эйлера (неявного)
-    Eigen::Matrix2d A;
-    A << -500.005, 499.995,
-        499.995, -500.005;
-
-    Eigen::Matrix2d I = Eigen::Matrix2d::Identity();
-    Eigen::Matrix2d M = I - m_stepSize * A;
-    Eigen::Matrix2d M_inv = M.inverse();
-
-    while (t <= m_endTime)
-    {
-        // При слишком маленьких значениях сразу выходим
-        bool belowThreshold = std::all_of(y.begin(), y.end(),
-                                          [](double val){ return std::abs(val) <= 1e-9; });
-        if (belowThreshold) {
-            qDebug() << "Stopped due to value exceeding threshold at t =" << t;
-            break;
-        }
-
-        if (currentStep > maxSteps) {
-            qDebug() << "Stopped due to exceeding maximum number of steps.";
-            break;
-        }
-
-        // Сохраняем только каждую skipFactor-ю точку
-        if (currentStep % skipFactor == 0) {
-            for (size_t i = 0; i < numEquations; ++i) {
-                m_series[i]->append(t, y[i]);
-            }
-        }
-
-        // Считаем y_{n+1} = M_inv * y_n
-        Eigen::Vector2d yVec(y[0], y[1]);
-        Eigen::Vector2d yNextVec = M_inv * yVec;
-        y[0] = yNextVec[0];
-        y[1] = yNextVec[1];
-
-        t += m_stepSize;
-        currentStep++;
-    }
 }
 
 const std::vector<QLineSeries*>& StiffOdeModel::getSeries() const
