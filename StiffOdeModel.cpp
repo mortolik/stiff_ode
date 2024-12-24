@@ -56,20 +56,20 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
 
     std::vector<QPointF> exactSolution;
     double t = m_startExactTime;
-    const double stopThreshold = 1e-09;
+
+    const double threshold = 1e-15;
 
     while (t <= m_endExactTime)
     {
         Eigen::Vector2d solution = coefficients[0] * exp(eigenValues[0] * t) * eigenVectors.col(0) +
                                    coefficients[1] * exp(eigenValues[1] * t) * eigenVectors.col(1);
 
-        if (std::abs(solution[0]) <= stopThreshold || std::abs(solution[1]) <= stopThreshold)
-        {
-            break;
-        }
+        double y0 = (std::abs(solution[0]) < threshold) ? 0.0 : solution[0];
+        double y1 = (std::abs(solution[1]) < threshold) ? 0.0 : solution[1];
 
-        exactSolution.emplace_back(t, solution[0]);
-        exactSolution.emplace_back(t, solution[1]);
+        exactSolution.emplace_back(t, y0);
+        exactSolution.emplace_back(t, y1);
+
         t += m_stepSize;
     }
 

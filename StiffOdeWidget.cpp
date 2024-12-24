@@ -326,12 +326,12 @@ void StiffOdeWidget::populateGlobalErrorChart()
     QString summaryText;
 
     summaryText += QString("Первая компонента:\n");
-    summaryText += QString("  Максимальная погрешность: %1 на шаге %2\n").arg(maxErrorY0).arg(maxErrorStepY0);
-    summaryText += QString("  Минимальная погрешность: %1 на шаге %2\n").arg(minErrorY0).arg(minErrorStepY0);
+    summaryText += QString("  Максимальная погрешность: %1 в точке х =  %2\n").arg(maxErrorY0).arg(maxErrorStepY0);
+    summaryText += QString("  Минимальная погрешность: %1 в точке х =  %2\n").arg(minErrorY0).arg(minErrorStepY0);
 
     summaryText += QString("\nВторая компонента:\n");
-    summaryText += QString("  Максимальная погрешность: %1 на шаге %2\n").arg(maxErrorY1).arg(maxErrorStepY1);
-    summaryText += QString("  Минимальная погрешность: %1 на шаге %2\n").arg(minErrorY1).arg(minErrorStepY1);
+    summaryText += QString("  Максимальная погрешность: %1 в точке х =  %2\n").arg(maxErrorY1).arg(maxErrorStepY1);
+    summaryText += QString("  Минимальная погрешность: %1 в точке х =  %2\n").arg(minErrorY1).arg(minErrorStepY1);
     summaryText += QString("\nКоличество шагов: %1 \n").arg(globalErrors[1].size());
 
     m_errorSummaryText->setText(summaryText);
