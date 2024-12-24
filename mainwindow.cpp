@@ -92,7 +92,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_stepSizeSpinBox = new QDoubleSpinBox(this);
     m_stepSizeSpinBox->setRange(0.001, 1.0);
     m_stepSizeSpinBox->setDecimals(3);
-    m_stepSizeSpinBox->setValue(0.001);
+    m_stepSizeSpinBox->setValue(0.010);
     m_stepSizeSpinBox->setSingleStep(0.001);
 
     inputLayout1->addWidget(stepSizeLabel);
@@ -111,7 +111,7 @@ QHBoxLayout* MainWindow::createGroupbox()
     m_endTimeSpinBox = new QDoubleSpinBox(this);
     m_endTimeSpinBox->setRange(0, 10000);
     m_endTimeSpinBox->setDecimals(3);
-    m_endTimeSpinBox->setValue(1.0);
+    m_endTimeSpinBox->setValue(10000.0);
     m_endTimeSpinBox->setSingleStep(0.001);
     inputLayout1->addWidget(endTimeLabel);
     inputLayout1->addWidget(m_endTimeSpinBox);
