@@ -18,8 +18,8 @@ public:
     void setParameters(double stepSize, double endTime);
     void solve();
     const std::vector<QLineSeries*>& getSeries() const;
-    std::vector<QPointF> computeExactSolution() const;
-    std::vector<std::vector<QPointF>>computeGlobalError() const;
+    std::vector<QPointF> computeExactSolution();
+    std::vector<std::vector<QPointF>>computeGlobalError();
     double getExactEndTime();
     double getStepSize();
     void checkOrder();
@@ -31,5 +31,7 @@ private:
     double m_endTime;
     double m_stepSize;
     std::vector<QLineSeries*> m_series;
+
+    int m_maxSteps;
 };
 }

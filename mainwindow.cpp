@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setObjectName("mainWindow");
-    setMinimumSize(1200, 800); // Увеличен размер для удобства
+    setMinimumSize(1200, 800);
 
     QWidget *centralWidget = new QWidget(this);
     QPalette pal = centralWidget->palette();
@@ -60,6 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
         m_model = new StiffOde::StiffOdeModel(this);
         m_model->setInitialConditions({7, 13}, startTime);
         m_model->setParameters(stepSize, endTime);
+        m_model->computeExactSolution();
         m_model->solve();
 
         //m_model->checkOrder();

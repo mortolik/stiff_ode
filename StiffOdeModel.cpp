@@ -10,9 +10,8 @@
 namespace StiffOde
 {
 StiffOdeModel::StiffOdeModel(QObject* parent)
-    : QObject(parent), m_startTime(0.0), m_endTime(0.0), m_stepSize(0.1)
+    : QObject(parent), m_startTime(0.0), m_endTime(0.0), m_stepSize(0.1), m_maxSteps(0)
 {
-    // Инициализация системы по умолчанию
     m_system = [](const std::vector<double>& y, double /*t*/) -> std::vector<double>
     {
         return
@@ -45,7 +44,6 @@ void StiffOdeModel::solve()
     if (!m_system || m_initialConditions.empty())
         return;
 
-    // Очистим старые данные
     qDeleteAll(m_series);
     m_series.clear();
 
@@ -57,12 +55,10 @@ void StiffOdeModel::solve()
     std::vector<double> y = m_initialConditions;
     double t = m_startTime;
 
-    const size_t maxSteps = 1e6; // ограничение на количество шагов
     size_t currentStep = 0;
 
-    // Создаём матрицы для метода Эйлера (неявного)
     Eigen::MatrixXd A(numEquations, numEquations);
-    // Заполнение матрицы A по вашей системе
+
     A << -500.005, 499.995,
         499.995, -500.005;
 
@@ -72,13 +68,15 @@ void StiffOdeModel::solve()
 
     while (t <= m_endTime)
     {
+        if (m_maxSteps > 0 && currentStep >= m_maxSteps) {
+            qDebug() << "Численное решение достигло максимального шага:" << m_maxSteps;
+            break;
+        }
 
-        // Запоминаем точку (добавляем *каждый* шаг в m_series)
         for (size_t i = 0; i < numEquations; ++i) {
             m_series[i]->append(t, y[i]);
         }
 
-        // Считаем y_{n+1} = M_inv * y_n
         Eigen::VectorXd yVec(numEquations);
         for (size_t i = 0; i < numEquations; ++i)
             yVec(i) = y[i];
@@ -95,7 +93,7 @@ void StiffOdeModel::solve()
     qDebug() << "Численное решение завершено. Количество шагов:" << currentStep;
 }
 
-std::vector<QPointF> StiffOdeModel::computeExactSolution() const
+std::vector<QPointF> StiffOdeModel::computeExactSolution()
 {
     Eigen::Matrix2d A;
     A << -500.005, 499.995,
@@ -110,19 +108,12 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
 
     std::vector<QPointF> exactSolution;
 
-    // Проверяем, есть ли численное решение
-    if (m_series.empty()) {
-        qDebug() << "Численное решение отсутствует или пусто.";
-        return exactSolution;
-    }
-
-    size_t numSteps = m_series[0]->count();
     const double threshold = 1e-15;
+    double t = m_startTime;
+    size_t step = 0;
 
-    for (size_t i = 0; i < numSteps; ++i)
+    while (t <= m_endTime)
     {
-        double t = m_series[0]->at(i).x();
-
         Eigen::Vector2d solution = coefficients[0] * std::exp(eigenValues(0) * t) * eigenVectors.col(0) +
                                    coefficients[1] * std::exp(eigenValues(1) * t) * eigenVectors.col(1);
 
@@ -131,6 +122,15 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
 
         exactSolution.emplace_back(t, y0);
         exactSolution.emplace_back(t, y1);
+
+        if (std::abs(y0) < threshold && std::abs(y1) < threshold) {
+            m_maxSteps = step + 1;
+            qDebug() << "Точное решение достигло нуля. Прерывание на шаге:" << m_maxSteps;
+            break;
+        }
+
+        t += m_stepSize;
+        step++;
     }
 
     qDebug() << "Точное решение завершено. Количество шагов:" << exactSolution.size() / 2;
@@ -138,9 +138,9 @@ std::vector<QPointF> StiffOdeModel::computeExactSolution() const
     return exactSolution;
 }
 
-std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
+std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError()
 {
-    const auto exactSolution = computeExactSolution();
+    auto exactSolution = computeExactSolution();
     const auto& numericalSolution = m_series;
 
     if (exactSolution.empty() || numericalSolution.empty())
@@ -149,7 +149,6 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
     size_t numSteps = numericalSolution[0]->count();
     size_t numComponents = numericalSolution.size();
 
-    // Теперь количество точек совпадает
     std::vector<std::vector<QPointF>> globalErrors(numComponents, std::vector<QPointF>());
 
     for (size_t i = 0; i < numSteps; ++i) {

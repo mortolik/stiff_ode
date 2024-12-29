@@ -42,14 +42,12 @@ void StiffOdeWidget::setupUi()
 
     QTabWidget* tabWidget = new QTabWidget(this);
 
-    // Основной график
     m_chartView->setChart(m_chart);
     QWidget* chartTab = new QWidget(this);
     QVBoxLayout* chartLayout = new QVBoxLayout(chartTab);
     chartLayout->addWidget(m_chartView);
     chartTab->setLayout(chartLayout);
 
-    // Таблица и справка
     QWidget* tableTab = new QWidget(this);
     QVBoxLayout* tableLayout = new QVBoxLayout(tableTab);
     tableLayout->addWidget(m_tableView);
@@ -60,7 +58,6 @@ void StiffOdeWidget::setupUi()
 
     tableTab->setLayout(tableLayout);
 
-    // График точного решения
     m_exactChartView = new QChartView(this);
     m_exactChartView->setChart(m_exactChart);
     QWidget* exactChartTab = new QWidget(this);
@@ -68,7 +65,6 @@ void StiffOdeWidget::setupUi()
     exactChartLayout->addWidget(m_exactChartView);
     exactChartTab->setLayout(exactChartLayout);
 
-    // График глобальной погрешности
     m_globalErrorChartView = new QChartView(this);
     m_globalErrorChartView->setChart(m_globalErrorChart);
     QWidget* errorChartTab = new QWidget(this);
@@ -76,12 +72,10 @@ void StiffOdeWidget::setupUi()
     errorChartLayout->addWidget(m_globalErrorChartView);
     errorChartTab->setLayout(errorChartLayout);
 
-    // Сравнение решений
     QWidget* solutionComparisonTab = m_solutionComparisonTab;
     QVBoxLayout* comparisonLayout = new QVBoxLayout(solutionComparisonTab);
     solutionComparisonTab->setLayout(comparisonLayout);
 
-    // Точные значения
     QWidget* exactValuesTab = m_exactValuesTab;
     QVBoxLayout* exactValuesLayout = new QVBoxLayout(exactValuesTab);
     exactValuesTab->setLayout(exactValuesLayout);
@@ -109,14 +103,12 @@ void StiffOdeWidget::populateTableAndChart()
     size_t numSteps = seriesList[0]->count();
     size_t numVariables = seriesList.size();
 
-    // Проверка соответствия размеров
     size_t maxAllowedSteps = exactSolution.size() / numVariables;
     if (numSteps > maxAllowedSteps) {
         qDebug() << "Численное решение превышает количество точек точного решения.";
         numSteps = maxAllowedSteps; // Ограничиваем количество шагов
     }
 
-    // Извлекаем данные для модели таблицы
     std::vector<QPointF> numericalSeries0;
     std::vector<QPointF> numericalSeries1;
     std::vector<QPointF> exactSeries0;
@@ -139,29 +131,24 @@ void StiffOdeWidget::populateTableAndChart()
             error1.emplace_back(globalErrors[1][i].x(), globalErrors[1][i].y());
     }
 
-    // Устанавливаем данные в модель таблицы
     m_tableModel->setData(numericalSeries0, numericalSeries1, exactSeries0, exactSeries1, error0, error1);
     m_tableView->setModel(m_tableModel);
 
-    // Настройка таблицы для лучшей производительности
     m_tableView->setSortingEnabled(true);
     m_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    // Теперь строим график с пропуском точек
     m_chart->removeAllSeries();
     for (size_t j = 0; j < numVariables; ++j)
     {
         auto chartSeries = new QtCharts::QLineSeries();
         chartSeries->setName(QString("u(%1)").arg(j + 1));
 
-        // Пропуск для графика
         const int MAX_POINTS = 10000;
         int skipFactor = (numSteps > MAX_POINTS)
                              ? static_cast<int>(std::ceil(double(numSteps) / MAX_POINTS))
                              : 1;
 
-        // Заполняем новую серию с учётом skipFactor
         for (size_t i = 0; i < numSteps; i += skipFactor)
         {
             double xValue = seriesList[j]->at(i).x();
@@ -194,26 +181,22 @@ void StiffOdeWidget::populateExactChart()
         return;
 
     size_t numVariables = 2;
-    size_t totalPairs = exactSolution.size() / numVariables;
     auto* seriesY0 = new QtCharts::QLineSeries();
     auto* seriesY1 = new QtCharts::QLineSeries();
 
     seriesY0->setName("Точное решение u(1)");
     seriesY1->setName("Точное решение u(2)");
 
-    const int MAX_POINTS = 10000;
-    int skipFactor = (totalPairs > MAX_POINTS)
-                         ? static_cast<int>(std::ceil(double(totalPairs) / MAX_POINTS))
-                         : 1;
+    const double threshold = 1e-15;
 
-    for (size_t i = 0; i < totalPairs; i += skipFactor)
+    for (size_t i = 0; i < exactSolution.size() / numVariables; ++i)
     {
-        // i-я пара: [2*i] = y0, [2*i+1] = y1
-        const auto& pointY0 = exactSolution[2 * i];
-        const auto& pointY1 = exactSolution[2 * i + 1];
+        double t = exactSolution[i * numVariables].x();
+        double y0 = (std::abs(exactSolution[i * numVariables].y()) < threshold) ? 0.0 : exactSolution[i * numVariables].y();
+        double y1 = (std::abs(exactSolution[i * numVariables + 1].y()) < threshold) ? 0.0 : exactSolution[i * numVariables + 1].y();
 
-        seriesY0->append(pointY0.x(), pointY0.y());
-        seriesY1->append(pointY1.x(), pointY1.y());
+        seriesY0->append(t, y0);
+        seriesY1->append(t, y1);
     }
 
     m_exactChart->removeAllSeries();
@@ -350,7 +333,6 @@ void StiffOdeWidget::populateSolutionComparisonChart()
     size_t numSteps = numericalSeries[0]->count();
     size_t numVariables = numericalSeries.size();
 
-    // Предполагаем, что numVariables = 2
     auto* numericalY0 = new QtCharts::QLineSeries();
     auto* numericalY1 = new QtCharts::QLineSeries();
     auto* exactY0 = new QtCharts::QLineSeries();
@@ -419,7 +401,6 @@ void StiffOdeWidget::populateSolutionComparisonChart()
     auto* layout = qobject_cast<QVBoxLayout*>(m_solutionComparisonTab->layout());
     if (layout)
     {
-        // Очистка предыдущих графиков
         while (QLayoutItem* item = layout->takeAt(0))
         {
             delete item->widget();
@@ -479,7 +460,6 @@ void StiffOdeWidget::populateExactValuesTable()
     QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(m_exactValuesTab->layout());
     if (layout)
     {
-        // Очистка предыдущих таблиц
         while (QLayoutItem* item = layout->takeAt(0))
         {
             delete item->widget();
