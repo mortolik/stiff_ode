@@ -75,17 +75,6 @@ void StiffOdeModel::solve()
 
     while (t <= m_endTime)
     {
-        bool belowThreshold = std::all_of(y.begin(), y.end(),
-                                          [](double val){ return std::abs(val) <= 1e-9; });
-        if (belowThreshold) {
-            qDebug() << "Stopped due to value falling below threshold at t =" << t;
-            break;
-        }
-
-        if (currentStep > maxSteps) {
-            qDebug() << "Stopped due to exceeding maximum number of steps.";
-            break;
-        }
 
         // Запоминаем точку (добавляем *каждый* шаг в m_series)
         for (size_t i = 0; i < numEquations; ++i) {

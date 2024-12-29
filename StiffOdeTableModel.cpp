@@ -92,9 +92,9 @@ QVariant StiffOde::StiffOdeTableModel::headerData(int section, Qt::Orientation o
         case 3:
             return QString("u(2) (точное)");
         case 4:
-            return QString("u(1) (численное)");
+            return QString("v(1) (численное)");
         case 5:
-            return QString("u(2) (численное)");
+            return QString("v(2) (численное)");
         case 6:
             return QString("E (погрешность 1)");
         case 7:
