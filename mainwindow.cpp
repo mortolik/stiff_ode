@@ -69,6 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
         m_model->setParameters(stepSize, endTime, endExactTime, startExactTime);
         m_model->solve();
 
+        //m_model->checkOrder();
+
         m_widget = new StiffOde::StiffOdeWidget(m_model, this);
 
         centralWidget->layout()->addWidget(m_widget);

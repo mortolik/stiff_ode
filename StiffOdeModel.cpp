@@ -174,6 +174,53 @@ std::vector<std::vector<QPointF>> StiffOdeModel::computeGlobalError() const
 
 double StiffOdeModel::getStepSize() {return m_stepSize;}
 
+void StiffOdeModel::checkOrder()
+{
+    double originalStepSize = m_stepSize;
+    double originalEndTime = m_endTime;
+
+    solve();
+    auto solution1 = computeGlobalError();
+
+    m_stepSize /= 2.0;
+    m_endTime = originalEndTime;
+
+    solve();
+    auto solution2 = computeGlobalError();
+
+    m_stepSize = originalStepSize;
+    m_endTime = originalEndTime;
+
+    if (solution1.empty() || solution2.empty() || solution1[0].size() != solution2[0].size() / 2)
+    {
+        qDebug() << "Ошибка: количество шагов не совпадает.";
+        return;
+    }
+
+    double errorRatio = 0.0;
+    size_t numPoints = solution1[0].size();
+
+    for (size_t i = 0; i < numPoints; ++i)
+    {
+        double error1 = std::abs(solution1[0][i].y());
+        double error2 = std::abs(solution2[0][2 * i].y());
+
+        if (error1 > 0 && error2 > 0)
+        {
+            errorRatio += error1 / error2;
+        }
+    }
+
+    errorRatio /= numPoints;
+
+    double order = std::log2(errorRatio);
+
+    qDebug() <<"--------------------";
+    qDebug() << "Отношение ошибок:" << errorRatio;
+    qDebug() << "Оценка порядка метода:" << order;
+    qDebug() <<"--------------------";
+}
+
 const std::vector<QLineSeries*>& StiffOdeModel::getSeries() const
 {
     return m_series;
