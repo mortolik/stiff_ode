@@ -51,22 +51,15 @@ MainWindow::MainWindow(QWidget *parent)
         double stepSize = m_stepSizeSpinBox->value();
         double startTime = m_startTimeSpinBox->value();
         double endTime = m_endTimeSpinBox->value();
-        double endExactTime = endTime; // Устанавливаем endExactTime равным endTime
-        double startExactTime = m_startExactTimeSpinBox->value();
 
         if (startTime >= endTime) {
             qDebug() << "Начальное время должно быть меньше конечного.";
             return;
         }
 
-        if (startExactTime > endExactTime) {
-            qDebug() << "Начальное время точного решения должно быть меньше или равно конечному.";
-            return;
-        }
-
         m_model = new StiffOde::StiffOdeModel(this);
         m_model->setInitialConditions({7, 13}, startTime);
-        m_model->setParameters(stepSize, endTime, endExactTime, startExactTime);
+        m_model->setParameters(stepSize, endTime);
         m_model->solve();
 
         //m_model->checkOrder();
@@ -89,7 +82,6 @@ QHBoxLayout* MainWindow::createGroupbox()
     groupBoxesLayout->setSpacing(10);
     groupBoxesLayout->setAlignment(Qt::AlignLeft);
 
-    // Основные параметры
     QGroupBox *inputGroupBox1 = new QGroupBox("Основные параметры", this);
     QVBoxLayout *groupBoxLayout1 = new QVBoxLayout(inputGroupBox1);
     groupBoxLayout1->setSpacing(10);
@@ -127,35 +119,6 @@ QHBoxLayout* MainWindow::createGroupbox()
 
     groupBoxLayout1->addLayout(inputLayout1);
     groupBoxesLayout->addWidget(inputGroupBox1);
-
-    // Параметры точного решения
-    QGroupBox *inputGroupBox2 = new QGroupBox("Параметры точного решения", this);
-    QVBoxLayout *groupBoxLayout2 = new QVBoxLayout(inputGroupBox2);
-    groupBoxLayout2->setSpacing(10);
-
-    QHBoxLayout *inputLayout2 = new QHBoxLayout();
-    inputLayout2->setSpacing(10);
-
-    QLabel *startExactTimeLabel = new QLabel("Начальное x_n:", this);
-    m_startExactTimeSpinBox = new QDoubleSpinBox(this);
-    m_startExactTimeSpinBox->setRange(0, 100000);
-    m_startExactTimeSpinBox->setDecimals(3);
-    m_startExactTimeSpinBox->setValue(0.0);
-    m_startExactTimeSpinBox->setSingleStep(0.1);
-    inputLayout2->addWidget(startExactTimeLabel);
-    inputLayout2->addWidget(m_startExactTimeSpinBox);
-
-    QLabel *endExactTimeLabel = new QLabel("Конечное x_n:", this);
-    m_endExactTimeSpinBox = new QDoubleSpinBox(this);
-    m_endExactTimeSpinBox->setRange(0, 100000);
-    m_endExactTimeSpinBox->setDecimals(3);
-    m_endExactTimeSpinBox->setValue(10000.0); // Теперь соответствует endTime
-    m_endExactTimeSpinBox->setSingleStep(10.0);
-    inputLayout2->addWidget(endExactTimeLabel);
-    inputLayout2->addWidget(m_endExactTimeSpinBox);
-
-    groupBoxLayout2->addLayout(inputLayout2);
-    groupBoxesLayout->addWidget(inputGroupBox2);
 
     return groupBoxesLayout;
 }

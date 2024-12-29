@@ -10,8 +10,7 @@
 namespace StiffOde
 {
 StiffOdeModel::StiffOdeModel(QObject* parent)
-    : QObject(parent), m_startTime(0.0), m_endTime(0.0), m_stepSize(0.1),
-    m_endExactTime(0.0), m_startExactTime(0.0)
+    : QObject(parent), m_startTime(0.0), m_endTime(0.0), m_stepSize(0.1)
 {
     // Инициализация системы по умолчанию
     m_system = [](const std::vector<double>& y, double /*t*/) -> std::vector<double>
@@ -35,12 +34,10 @@ void StiffOdeModel::setInitialConditions(const std::vector<double>& initialCondi
     m_startTime = startTime;
 }
 
-void StiffOdeModel::setParameters(double stepSize, double endTime, double endExactTime, double startExactTime)
+void StiffOdeModel::setParameters(double stepSize, double endTime)
 {
     m_stepSize = stepSize;
     m_endTime = endTime;
-    m_endExactTime = endExactTime;
-    m_startExactTime = startExactTime;
 }
 
 void StiffOdeModel::solve()

@@ -193,7 +193,7 @@ void StiffOdeWidget::populateExactChart()
     if (exactSolution.empty())
         return;
 
-    size_t numVariables = 2; // Предполагаем, что 2 переменные
+    size_t numVariables = 2;
     size_t totalPairs = exactSolution.size() / numVariables;
     auto* seriesY0 = new QtCharts::QLineSeries();
     auto* seriesY1 = new QtCharts::QLineSeries();
@@ -281,7 +281,6 @@ void StiffOdeWidget::populateGlobalErrorChart()
         seriesY0->append(point0.x(), point0.y());
         seriesY1->append(point1.x(), point1.y());
 
-        // Обновление максимальных значений
         if (point0.y() > maxErrorY0) {
             maxErrorY0 = point0.y();
             maxErrorStepY0 = point0.x();
@@ -312,7 +311,6 @@ void StiffOdeWidget::populateGlobalErrorChart()
 
     m_globalErrorChart->setTitle("График глобальной погрешности");
 
-    // Получение последних численных решений
     const auto& series = m_model->getSeries();
     QString lastSolutionsText;
     if (!series.empty())

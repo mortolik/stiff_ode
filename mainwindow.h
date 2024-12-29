@@ -32,6 +32,4 @@ private:
     QDoubleSpinBox* m_stepSizeSpinBox;
     QDoubleSpinBox* m_startTimeSpinBox;
     QDoubleSpinBox* m_endTimeSpinBox;
-    QDoubleSpinBox* m_endExactTimeSpinBox;
-    QDoubleSpinBox* m_startExactTimeSpinBox;
 };
